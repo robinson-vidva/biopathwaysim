@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "id": "goldbeter-koshland",
   "name": "Zero-order ultrasensitivity switch",
   "citation": {
@@ -14,12 +14,13 @@
   "parameters": [
     { "id": "signal", "name": "Signal S (kinase Vmax)", "value": 1.0,  "min": 0.01, "max": 100.0, "scale": "log", "unit": "uM/s" },
     { "id": "Vback",  "name": "Phosphatase Vmax",       "value": 1.0,  "min": 0.1,  "max": 10.0,  "scale": "log", "unit": "uM/s" },
-    { "id": "Km",     "name": "Km (saturation)",        "value": 0.01, "min": 0.001,"max": 2.0,   "scale": "log", "unit": "uM" }
+    { "id": "Km",     "name": "Km (saturation)",        "value": 0.01, "min": 0.001,"max": 2.0,   "scale": "log", "unit": "uM" },
+    { "id": "kinDose","name": "Kinase inhibitor",       "value": 0.0,  "min": 0.0,  "max": 2.0,   "scale": "linear", "unit": "uM", "role": "dose" }
   ],
   "reactions": [
     { "id": "activate",   "name": "Modification (kinase)",   "reactants": { "W": 1 },     "products": { "Wstar": 1 },
       "rateLaw": { "type": "michaelis_menten", "Vmax": "signal", "Km": "Km",
-        "modulators": [ { "name": "Kinase inhibitor", "source": { "dose": 0.0, "doseMax": 2.0 }, "mechanism": "competitive", "Ki": 0.05 } ] } },
+        "modulators": [ { "id": "kinInhibitor", "name": "Kinase inhibitor", "source": { "parameter": "kinDose" }, "mechanism": "competitive", "Ki": 0.05 } ] } },
     { "id": "deactivate", "name": "Demodification (phosphatase)", "reactants": { "Wstar": 1 }, "products": { "W": 1 },
       "rateLaw": { "type": "michaelis_menten", "Vmax": "Vback", "Km": "Km" } }
   ],

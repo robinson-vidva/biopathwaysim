@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "id": "mapk",
   "name": "MAPK/ERK cascade with negative feedback",
   "citation": {
@@ -39,12 +39,13 @@
     { "id": "V9",       "name": "V9",                "value": 0.5,   "min": 0.01, "max": 5.0,  "scale": "log",    "unit": "nM/s" },
     { "id": "K9",       "name": "K9",                "value": 15.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
     { "id": "V10",      "name": "V10",               "value": 0.5,   "min": 0.01, "max": 5.0,  "scale": "log",    "unit": "nM/s" },
-    { "id": "K10",      "name": "K10",               "value": 15.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" }
+    { "id": "K10",      "name": "K10",               "value": 15.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
+    { "id": "mekDose",  "name": "MEK inhibitor",     "value": 0.0,   "min": 0.0,  "max": 300,  "scale": "linear", "unit": "nM", "role": "dose" }
   ],
   "reactions": [
     { "id": "v1",  "name": "MKKK activation (feedback)", "reactants": { "MKKK": 1 },  "products": { "MKKKp": 1 },
       "rateLaw": { "type": "michaelis_menten", "Vmax": "stimulus", "Km": "K1",
-        "modulators": [ { "name": "Negative feedback", "source": { "species": "MAPKpp" }, "mechanism": "noncompetitive", "Ki": "fbKi", "n": "fbN" } ] } },
+        "modulators": [ { "id": "negFeedback", "name": "Negative feedback", "source": { "species": "MAPKpp" }, "mechanism": "noncompetitive", "Ki": "fbKi", "n": "fbN" } ] } },
     { "id": "v2",  "name": "MKKK-P deactivation", "reactants": { "MKKKp": 1 }, "products": { "MKKK": 1 },
       "rateLaw": { "type": "michaelis_menten", "Vmax": "V2", "Km": "K2" } },
     { "id": "v3",  "name": "MKK phosphorylation", "reactants": { "MKK": 1 }, "products": { "MKKp": 1 },
@@ -59,7 +60,7 @@
       "rateLaw": { "type": "michaelis_menten", "kcat": "k7", "Km": "K7", "enzyme": "MKKpp" } },
     { "id": "v8",  "name": "MAPK-P phosphorylation", "reactants": { "MAPKp": 1 }, "products": { "MAPKpp": 1 },
       "rateLaw": { "type": "michaelis_menten", "kcat": "k8", "Km": "K8", "enzyme": "MKKpp",
-        "modulators": [ { "name": "MEK inhibitor", "source": { "dose": 0.0, "doseMax": 300.0 }, "mechanism": "noncompetitive", "Ki": 15.0 } ] } },
+        "modulators": [ { "id": "mekInhibitor", "name": "MEK inhibitor", "source": { "parameter": "mekDose" }, "mechanism": "noncompetitive", "Ki": 15.0 } ] } },
     { "id": "v9",  "name": "MAPK-PP dephosphorylation", "reactants": { "MAPKpp": 1 }, "products": { "MAPKp": 1 },
       "rateLaw": { "type": "michaelis_menten", "Vmax": "V9", "Km": "K9" } },
     { "id": "v10", "name": "MAPK-P dephosphorylation", "reactants": { "MAPKp": 1 }, "products": { "MAPK": 1 },

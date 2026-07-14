@@ -3,20 +3,20 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { buildModel } from "../js/assemble.js";
-import { integrate } from "../js/integrator.js";
-import { validateModel } from "../js/spec.js";
-import { reactionRate } from "../js/rates.js";
+import vm from "node:vm";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 
+// The engine is authored as classic scripts that attach to globalThis.BPS
+// (so index.html can load them by <script src> over file://). Load them here
+// in order and run in this context; then use them exactly as before.
+for (const f of ["spec.js", "rates.js", "assemble.js", "integrator.js"])
+  vm.runInThisContext(readFileSync(join(root, "js", f), "utf8"));
+const { validateModel, buildModel, integrate, reactionRate } = globalThis.BPS;
+
 function loadModel(name) {
   return JSON.parse(readFileSync(join(root, "js", "models", name), "utf8"));
-}
-
-function clone(o) {
-  return JSON.parse(JSON.stringify(o));
 }
 
 function withParams(sys, overrides) {
@@ -32,23 +32,11 @@ function anyNaN(sol) {
   return false;
 }
 
-// Set the dose of the first dose-sourced modulator on one reaction.
-function setReactionDose(model, reactionId, dose) {
-  const m = clone(model);
-  const rxn = m.reactions.find((r) => r.id === reactionId);
-  const mod = (rxn.rateLaw.modulators || []).find((x) => x.source.dose !== undefined);
-  mod.source.dose = dose;
-  return m;
-}
-
-// Set every dose-sourced modulator in the model to a value or to its doseMax.
-function setAllDoses(model, mode) {
-  const m = clone(model);
-  for (const r of m.reactions)
-    for (const mod of r.rateLaw.modulators || [])
-      if (mod.source.dose !== undefined)
-        mod.source.dose = mode === "max" ? mod.source.doseMax || 0 : mode;
-  return m;
+// The dose parameter driving the modulator on a given reaction.
+function doseParamFor(model, reactionId) {
+  const rxn = model.reactions.find((r) => r.id === reactionId);
+  const mod = (rxn.rateLaw.modulators || []).find((m) => m.source.parameter !== undefined);
+  return mod ? mod.source.parameter : null;
 }
 
 function monotoneDown(a) {
@@ -146,11 +134,11 @@ const mapkModel = loadModel("mapk.json");
 const gkModel = loadModel("goldbeter-koshland.json");
 validateModel(mapkModel);
 validateModel(gkModel);
-console.log("both models pass schema validation (v1.1)");
+console.log("both models pass schema validation (v1.2)");
 
 let badCaught = false;
 try {
-  validateModel({ schemaVersion: "1.1", id: "x", name: "x", species: [{ id: "A", initial: 1 }],
+  validateModel({ schemaVersion: "1.2", id: "x", name: "x", species: [{ id: "A", initial: 1 }],
     parameters: [], reactions: [{ id: "r", reactants: {}, products: {},
       rateLaw: { type: "mass_action", k: "missing" } }] });
 } catch (e) { badCaught = true; }
@@ -180,9 +168,11 @@ console.log("\n== 3. Inhibitors monotonically reduce their TARGET REACTION rate 
 // Invariant: at a fixed state, higher dose lowers the target reaction's rate.
 // Downstream species output is emergent and may be non-monotonic (see below).
 function targetRateVsDose(model, sys, reactionId, doses) {
+  const rxn = model.reactions.find((r) => r.id === reactionId);
+  const dp = doseParamFor(model, reactionId);
   return doses.map((d) => {
-    const rxn = setReactionDose(model, reactionId, d).reactions.find((r) => r.id === reactionId);
-    return reactionRate(rxn, sys.y0, sys.idx, sys.defaultParams);
+    const p = Object.assign({}, sys.defaultParams, { [dp]: d });
+    return reactionRate(rxn, sys.y0, sys.idx, p);
   });
 }
 const mekDoses = [0, 15, 30, 60, 120, 180, 240, 300];
@@ -196,10 +186,10 @@ check("kinase inhibitor reduces activate rate", monotoneDown(kinRate),
   "activate rate: " + kinRate.map((v) => v.toFixed(4)).join(" > "));
 
 // Informational: emergent downstream active-ERK is NOT asserted monotonic.
+const mekDP = doseParamFor(mapkModel, "v8");
 const mekEmergent = mekDoses.map((d) => {
-  const sys = buildModel(setReactionDose(mapkModel, "v8", d));
-  return meanOfSpecies(run(sys, sys.defaultParams, 15000, { rtol: 1e-7, atol: 1e-9, hmax: 20 }),
-    sys.idx.MAPKpp, 4000);
+  const p = Object.assign({}, mapk.defaultParams, { [mekDP]: d });
+  return meanOfSpecies(run(mapk, p, 15000, { rtol: 1e-7, atol: 1e-9, hmax: 20 }), mapk.idx.MAPKpp, 4000);
 });
 console.log("  (emergent, not asserted) mean active-ERK vs MEK dose: " +
   mekEmergent.map((v) => v.toFixed(1)).join(", "));
@@ -209,8 +199,9 @@ console.log("\n== 4. Integrator stable at slider extremes ==");
 let stable = true;
 const details = [];
 for (const model of [mapkModel, gkModel]) {
+  const sys = buildModel(model);
   for (const bound of ["min", "max"]) {
-    const sys = buildModel(setAllDoses(model, bound === "max" ? "max" : 0));
+    // dose parameters carry min 0 / max doseMax, so this also drives inhibitors to extremes.
     const p = Object.assign({}, sys.defaultParams);
     for (const par of model.parameters) if (par[bound] !== undefined) p[par.id] = par[bound];
     const tEnd = model.simulation.tEnd;
