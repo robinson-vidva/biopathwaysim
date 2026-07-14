@@ -288,8 +288,80 @@
     }
   }
 
+  // --- dose-response controls ---------------------------------------------
+
+  function makeSelect(options, value, onChange) {
+    const sel = el("select");
+    for (const o of options) {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      if (o.value === value) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.addEventListener("change", () => onChange(sel.value));
+    return sel;
+  }
+
+  function field(labelText, control) {
+    const f = el("div", "sweep-field");
+    const l = el("label");
+    l.textContent = labelText;
+    f.appendChild(l);
+    f.appendChild(control);
+    return f;
+  }
+
+  const READOUTS = [
+    { value: "mean", label: "Mean" },
+    { value: "final", label: "Final" },
+    { value: "amplitude", label: "Amplitude" },
+    { value: "min", label: "Minimum" },
+    { value: "max", label: "Maximum" },
+  ];
+
+  function buildSweepControls(container, model, cfg) {
+    container.innerHTML = "";
+    const paramOpts = model.parameters.map((p) => ({ value: p.id, label: p.name || p.id }));
+    const speciesOpts = model.species.map((s) => ({ value: s.id, label: s.name || s.id }));
+
+    let spacingSel;
+    const paramSel = makeSelect(paramOpts, cfg.paramId, (v) => {
+      cfg.paramId = v;
+      const p = model.parameters.find((x) => x.id === v);
+      cfg.spacing = p.scale || "linear";
+      if (spacingSel) spacingSel.value = cfg.spacing;
+    });
+    container.appendChild(field("Sweep parameter", paramSel));
+
+    container.appendChild(field("Read out species",
+      makeSelect(speciesOpts, cfg.speciesId, (v) => { cfg.speciesId = v; })));
+
+    container.appendChild(field("Readout",
+      makeSelect(READOUTS, cfg.readout, (v) => { cfg.readout = v; })));
+
+    const nInput = el("input");
+    nInput.type = "number";
+    nInput.min = 3; nInput.max = 200; nInput.step = 1;
+    nInput.value = cfg.nPoints;
+    nInput.addEventListener("change", () => {
+      let n = Math.round(Number(nInput.value));
+      if (!(n >= 3)) n = 3;
+      if (n > 200) n = 200;
+      cfg.nPoints = n;
+      nInput.value = n;
+    });
+    container.appendChild(field("Points", nInput));
+
+    spacingSel = makeSelect(
+      [{ value: "linear", label: "Linear" }, { value: "log", label: "Log" }],
+      cfg.spacing, (v) => { cfg.spacing = v; });
+    container.appendChild(field("Spacing", spacingSel));
+  }
+
   NS.speciesColor = speciesColor;
   NS.buildControls = buildControls;
   NS.renderCitation = renderCitation;
   NS.renderEquations = renderEquations;
+  NS.buildSweepControls = buildSweepControls;
 })(typeof globalThis !== "undefined" ? globalThis : this);

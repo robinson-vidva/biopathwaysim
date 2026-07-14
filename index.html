@@ -35,6 +35,15 @@
           <canvas id="plot"></canvas>
         </div>
       </div>
+      <div class="panel dose-panel">
+        <div class="panel-head">
+          <h2>Dose-response</h2>
+          <button class="btn-run" id="sweep-run">Run sweep</button>
+        </div>
+        <div class="sweep-controls" id="sweep-controls"></div>
+        <div class="plot-wrap"><canvas id="dose-plot"></canvas></div>
+        <p class="dose-caption" id="dose-caption"></p>
+      </div>
       <div class="panel equations-panel">
         <div class="panel-head">
           <h2>Assembled equations</h2>
@@ -55,6 +64,7 @@
   <script src="js/rates.js"></script>
   <script src="js/assemble.js"></script>
   <script src="js/integrator.js"></script>
+  <script src="js/sweep.js"></script>
   <script src="js/plot.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/models/models.js"></script>

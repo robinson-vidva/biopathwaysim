@@ -127,5 +127,112 @@
     }
   }
 
+  // Dose-response scatter/line. pts: [{ x, y, osc }]. opts: { xLabel, yLabel, xLog }.
+  function drawDoseResponse(canvas, pts, opts) {
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth || 600;
+    const cssH = canvas.clientHeight || 300;
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    const data = pts.filter((p) => isFinite(p.x) && isFinite(p.y));
+    const mL = 66, mR = 16, mT = 16, mB = 44;
+    const pw = cssW - mL - mR;
+    const ph = cssH - mT - mB;
+    if (!data.length) return;
+
+    const xLog = !!opts.xLog && data.every((p) => p.x > 0);
+    const tx = (x) => (xLog ? Math.log10(x) : x);
+    let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+    for (const p of data) {
+      const X = tx(p.x);
+      if (X < xmin) xmin = X;
+      if (X > xmax) xmax = X;
+      if (p.y < ymin) ymin = p.y;
+      if (p.y > ymax) ymax = p.y;
+    }
+    if (xmax === xmin) xmax = xmin + 1;
+    const yPad = (ymax - ymin) * 0.08 || Math.abs(ymax) * 0.08 || 1;
+    ymin -= yPad; ymax += yPad;
+
+    const xToPx = (x) => mL + ((tx(x) - xmin) / (xmax - xmin)) * pw;
+    const yToPx = (y) => mT + ph - ((y - ymin) / (ymax - ymin)) * ph;
+
+    ctx.font = "12px 'JetBrains Mono', monospace";
+    ctx.textBaseline = "middle";
+    ctx.strokeStyle = "#eef2f6";
+    ctx.fillStyle = "#64748b";
+    ctx.lineWidth = 1;
+
+    const yticks = niceTicks(ymin, ymax, 5);
+    ctx.textAlign = "right";
+    for (const v of yticks) {
+      const y = yToPx(v);
+      ctx.beginPath(); ctx.moveTo(mL, y); ctx.lineTo(mL + pw, y); ctx.stroke();
+      ctx.fillText(fmtTick(v), mL - 8, y);
+    }
+
+    ctx.textAlign = "center";
+    const xticks = xLog ? logTicks(xmin, xmax) : niceTicks(xmin, xmax, 6);
+    for (const t of xticks) {
+      const xv = xLog ? Math.pow(10, t) : t;
+      const x = xToPx(xv);
+      if (x < mL - 1 || x > mL + pw + 1) continue;
+      ctx.beginPath(); ctx.moveTo(x, mT); ctx.lineTo(x, mT + ph); ctx.stroke();
+      ctx.fillText(fmtTick(xv), x, mT + ph + 16);
+    }
+
+    ctx.strokeStyle = "#94a3b8";
+    ctx.beginPath();
+    ctx.moveTo(mL, mT); ctx.lineTo(mL, mT + ph); ctx.lineTo(mL + pw, mT + ph);
+    ctx.stroke();
+
+    ctx.fillStyle = "#475569";
+    ctx.font = "12px 'DM Sans', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(opts.xLabel || "", mL + pw / 2, cssH - 6);
+    ctx.save();
+    ctx.translate(14, mT + ph / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(opts.yLabel || "", 0, 0);
+    ctx.restore();
+
+    const teal = "#0891b2";
+    ctx.strokeStyle = teal;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    data.forEach((p, i) => {
+      const x = xToPx(p.x), y = yToPx(p.y);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    for (const p of data) {
+      const x = xToPx(p.x), y = yToPx(p.y);
+      ctx.beginPath();
+      ctx.arc(x, y, 3.6, 0, 2 * Math.PI);
+      if (p.osc) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+        ctx.strokeStyle = teal;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = teal;
+        ctx.fill();
+      }
+    }
+  }
+
+  function logTicks(lo, hi) {
+    const ticks = [];
+    for (let p = Math.floor(lo); p <= Math.ceil(hi); p++) ticks.push(p);
+    return ticks;
+  }
+
   NS.drawPlot = drawPlot;
+  NS.drawDoseResponse = drawDoseResponse;
 })(typeof globalThis !== "undefined" ? globalThis : this);
