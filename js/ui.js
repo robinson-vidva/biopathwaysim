@@ -14,6 +14,7 @@
   }
 
   function fmt(x) {
+    if (x === undefined || x === null) return "?";
     if (typeof x !== "number" || !isFinite(x)) return String(x);
     if (x === 0) return "0";
     const a = Math.abs(x);
@@ -24,7 +25,7 @@
   }
 
   function resolveNum(v, params) {
-    return typeof v === "string" ? params[v] : v;
+    return typeof v === "string" ? (params ? params[v] : undefined) : v;
   }
 
   function el(tag, cls, html) {
@@ -215,7 +216,7 @@
       }
       base = s;
     } else {
-      const sub = Object.keys(reaction.reactants)[0];
+      const sub = Object.keys(reaction.reactants || {})[0] || "?";
       const applyKm = (val) => {
         let k = val;
         for (const r of kmComp) k += "&middot;(1 + " + r + ")";
@@ -265,8 +266,9 @@
     const laws = el("div", "eq-block");
     laws.appendChild(el("h3", null, "Reaction rates (current values)"));
     for (const r of model.reactions) {
-      laws.appendChild(el("div", "eq-line",
-        '<span class="eq-rxn">' + r.id + "</span> = " + renderRateLaw(r, params)));
+      let rhs;
+      try { rhs = renderRateLaw(r, params); } catch (e) { rhs = '<span class="eq-mod">(incomplete)</span>'; }
+      laws.appendChild(el("div", "eq-line", '<span class="eq-rxn">' + r.id + "</span> = " + rhs));
     }
     container.appendChild(laws);
 

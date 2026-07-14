@@ -159,4 +159,7 @@
   NS.validateModel = validateModel;
   NS.SCHEMA_VERSION = SCHEMA_VERSION;
   NS.MECHANISMS = MECHANISMS;
+  NS.RATE_LAWS = RATE_LAWS;
+  NS.MAX_SPECIES = MAX_SPECIES;
+  NS.MAX_REACTIONS = MAX_REACTIONS;
 })(typeof globalThis !== "undefined" ? globalThis : this);

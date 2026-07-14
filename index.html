@@ -21,6 +21,15 @@
     </div>
   </header>
 
+  <div class="toolbar">
+    <button class="tb-btn" id="btn-edit">Edit model</button>
+    <button class="tb-btn" id="btn-new">New blank model</button>
+    <button class="tb-btn" id="btn-import">Import model</button>
+    <input type="file" id="file-import" accept=".json,application/json" hidden>
+    <button class="tb-btn" id="btn-export">Export model (.json)</button>
+    <button class="tb-btn" id="btn-export-csv">Export trajectories (.csv)</button>
+  </div>
+
   <section class="citation" id="citation" aria-live="polite"></section>
 
   <main class="layout">
@@ -54,6 +63,14 @@
     </div>
   </main>
 
+  <section class="builder-panel" id="builder" hidden>
+    <div class="panel-head">
+      <h2>Model builder</h2>
+      <span class="builder-status" id="builder-status"></span>
+    </div>
+    <div class="builder-body" id="builder-body"></div>
+  </section>
+
   <footer class="disclaimer">
     For educational use. These models illustrate qualitative signaling behavior and are
     not calibrated to a specific cell line, tissue, or patient. Numerical output should
@@ -67,6 +84,7 @@
   <script src="js/sweep.js"></script>
   <script src="js/plot.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/builder.js"></script>
   <script src="js/models/models.js"></script>
   <script src="js/app.js"></script>
 </body>
