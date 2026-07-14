@@ -1,0 +1,8 @@
+{
+  "name": "biopathwaysim",
+  "version": "1.0.0",
+  "description": "Browser-based educational simulator for small cell-signaling models",
+  "type": "module",
+  "license": "MIT",
+  "private": true
+}

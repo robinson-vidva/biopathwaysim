@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.1",
+  "id": "goldbeter-koshland",
+  "name": "Zero-order ultrasensitivity switch",
+  "citation": {
+    "text": "Goldbeter A, Koshland DE. An amplified sensitivity arising from covalent modification in biological systems. Proc Natl Acad Sci USA 1981;78:6840-6844.",
+    "doi": "10.1073/pnas.78.11.6840"
+  },
+  "units": { "concentration": "uM", "time": "s" },
+  "species": [
+    { "id": "W",     "name": "Unmodified substrate", "initial": 1.0, "plot": false },
+    { "id": "Wstar", "name": "Modified substrate",   "initial": 0.0, "plot": true }
+  ],
+  "parameters": [
+    { "id": "signal", "name": "Signal S (kinase Vmax)", "value": 1.0,  "min": 0.01, "max": 100.0, "scale": "log", "unit": "uM/s" },
+    { "id": "Vback",  "name": "Phosphatase Vmax",       "value": 1.0,  "min": 0.1,  "max": 10.0,  "scale": "log", "unit": "uM/s" },
+    { "id": "Km",     "name": "Km (saturation)",        "value": 0.01, "min": 0.001,"max": 2.0,   "scale": "log", "unit": "uM" }
+  ],
+  "reactions": [
+    { "id": "activate",   "name": "Modification (kinase)",   "reactants": { "W": 1 },     "products": { "Wstar": 1 },
+      "rateLaw": { "type": "michaelis_menten", "Vmax": "signal", "Km": "Km",
+        "modulators": [ { "source": { "dose": 0.0, "doseMax": 2.0 }, "mechanism": "competitive", "Ki": 0.05 } ] } },
+    { "id": "deactivate", "name": "Demodification (phosphatase)", "reactants": { "Wstar": 1 }, "products": { "W": 1 },
+      "rateLaw": { "type": "michaelis_menten", "Vmax": "Vback", "Km": "Km" } }
+  ],
+  "simulation": { "tEnd": 500, "rtol": 1e-6, "atol": 1e-9 }
+}
