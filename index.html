@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BioPathwaySim</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="titles">
+      <h1>BioPathwaySim</h1>
+      <p class="subtitle">Interactive simulation of small cell-signaling models</p>
+    </div>
+    <div class="model-select">
+      <label for="model-picker">Model</label>
+      <select id="model-picker"></select>
+    </div>
+  </header>
+
+  <section class="citation" id="citation" aria-live="polite"></section>
+
+  <main class="layout">
+    <aside class="controls" id="controls"></aside>
+    <div class="viz">
+      <div class="panel plot-panel">
+        <div class="panel-head">
+          <h2>Time course</h2>
+          <span class="run-note" id="run-note"></span>
+        </div>
+        <div class="plot-wrap">
+          <canvas id="plot"></canvas>
+        </div>
+      </div>
+      <div class="panel equations-panel">
+        <div class="panel-head">
+          <h2>Assembled equations</h2>
+          <span class="hint">values substituted live from the controls</span>
+        </div>
+        <div class="equations" id="equations"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="disclaimer">
+    For educational use. These models illustrate qualitative signaling behavior and are
+    not calibrated to a specific cell line, tissue, or patient. Numerical output should
+    not be interpreted as a quantitative prediction.
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -43,6 +43,7 @@ function validateModulators(law, ctx, species, params) {
   law.modulators.forEach((m, k) => {
     const c = ctx + ".modulators[" + k + "]";
     if (!m || typeof m !== "object") fail(c + " must be an object");
+    if (m.name !== undefined && typeof m.name !== "string") fail(c + ".name must be a string");
     const src = m.source;
     if (!src || typeof src !== "object") fail(c + ".source is required");
     const hasSpecies = src.species !== undefined;
