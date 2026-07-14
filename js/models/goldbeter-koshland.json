@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "id": "goldbeter-koshland",
   "name": "Zero-order ultrasensitivity switch",
   "citation": {
@@ -18,13 +18,10 @@
   ],
   "reactions": [
     { "id": "activate",   "name": "Modification (kinase)",   "reactants": { "W": 1 },     "products": { "Wstar": 1 },
-      "rateLaw": { "type": "michaelis_menten", "Vmax": "signal", "Km": "Km" } },
+      "rateLaw": { "type": "michaelis_menten", "Vmax": "signal", "Km": "Km",
+        "modulators": [ { "source": { "dose": 0.0, "doseMax": 2.0 }, "mechanism": "competitive", "Ki": 0.05 } ] } },
     { "id": "deactivate", "name": "Demodification (phosphatase)", "reactants": { "Wstar": 1 }, "products": { "W": 1 },
       "rateLaw": { "type": "michaelis_menten", "Vmax": "Vback", "Km": "Km" } }
-  ],
-  "inhibitors": [
-    { "id": "kinaseInh", "name": "Kinase inhibitor", "target": "activate", "mechanism": "competitive",
-      "Ki": 0.05, "dose": 0.0, "doseMax": 2.0 }
   ],
   "simulation": { "tEnd": 500, "rtol": 1e-6, "atol": 1e-9 }
 }

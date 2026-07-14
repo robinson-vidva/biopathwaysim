@@ -1,6 +1,6 @@
-// Model spec v1.0 validation.
+// Model spec v1.1 validation.
 
-const SCHEMA_VERSION = "1.0";
+const SCHEMA_VERSION = "1.1";
 const MAX_SPECIES = 20;
 const MAX_REACTIONS = 25;
 const RATE_LAWS = ["constant", "mass_action", "michaelis_menten", "hill"];
@@ -30,6 +30,38 @@ function checkSpeciesRef(id, species, ctx) {
     fail(ctx + " references unknown species '" + id + "'");
 }
 
+// A value may be a literal number or a parameter id.
+function checkNumberOrParam(v, params, ctx) {
+  if (isNumber(v)) return;
+  if (typeof v === "string" && params.has(v)) return;
+  fail(ctx + " must be a number or a known parameter id");
+}
+
+function validateModulators(law, ctx, species, params) {
+  if (law.modulators === undefined) return;
+  if (!Array.isArray(law.modulators)) fail(ctx + ".modulators must be an array");
+  law.modulators.forEach((m, k) => {
+    const c = ctx + ".modulators[" + k + "]";
+    if (!m || typeof m !== "object") fail(c + " must be an object");
+    const src = m.source;
+    if (!src || typeof src !== "object") fail(c + ".source is required");
+    const hasSpecies = src.species !== undefined;
+    const hasDose = src.dose !== undefined;
+    if (hasSpecies === hasDose)
+      fail(c + ".source must specify exactly one of species or dose");
+    if (hasSpecies) checkSpeciesRef(src.species, species, c + ".source.species");
+    if (hasDose) {
+      if (!isNumber(src.dose)) fail(c + ".source.dose must be a number");
+      if (src.doseMax !== undefined && !isNumber(src.doseMax))
+        fail(c + ".source.doseMax must be a number");
+    }
+    if (!MECHANISMS.includes(m.mechanism))
+      fail(c + " has unknown mechanism '" + m.mechanism + "'");
+    checkNumberOrParam(m.Ki, params, c + ".Ki");
+    if (m.n !== undefined) checkNumberOrParam(m.n, params, c + ".n");
+  });
+}
+
 function validateRateLaw(law, rxnId, species, params, reactants) {
   if (!law || typeof law !== "object") fail(rxnId + ": missing rateLaw");
   if (!RATE_LAWS.includes(law.type))
@@ -56,13 +88,7 @@ function validateRateLaw(law, rxnId, species, params, reactants) {
     }
   }
 
-  if (law.feedback !== undefined) {
-    const fb = law.feedback;
-    if (!fb || typeof fb !== "object") fail(rxnId + ".feedback must be an object");
-    checkSpeciesRef(fb.species, species, rxnId + ".feedback.species");
-    checkParamRef(fb.Ki, params, rxnId + ".feedback.Ki");
-    checkParamRef(fb.n, params, rxnId + ".feedback.n");
-  }
+  validateModulators(law, rxnId + ".rateLaw", species, params);
 }
 
 export function validateModel(model) {
@@ -118,23 +144,6 @@ export function validateModel(model) {
     validateRateLaw(r.rateLaw, id, species, params, Object.keys(reactants));
   });
 
-  const inhibitors = model.inhibitors || [];
-  if (!Array.isArray(inhibitors)) fail("inhibitors must be an array");
-  const inhibitorIds = new Set();
-  inhibitors.forEach((inh, i) => {
-    const id = requireId(inh, "inhibitors", i);
-    if (inhibitorIds.has(id)) fail("duplicate inhibitor id '" + id + "'");
-    if (params.has(id)) fail("inhibitor id '" + id + "' collides with a parameter id");
-    inhibitorIds.add(id);
-    if (!reactionIds.has(inh.target))
-      fail("inhibitor '" + id + "' targets unknown reaction '" + inh.target + "'");
-    if (!MECHANISMS.includes(inh.mechanism))
-      fail("inhibitor '" + id + "' has unknown mechanism '" + inh.mechanism + "'");
-    if (!isNumber(inh.Ki) || inh.Ki <= 0) fail("inhibitor '" + id + "' Ki must be positive");
-    if (inh.dose !== undefined && !isNumber(inh.dose)) fail("inhibitor '" + id + "' dose must be a number");
-    if (inh.doseMax !== undefined && !isNumber(inh.doseMax)) fail("inhibitor '" + id + "' doseMax must be a number");
-  });
-
   const sim = model.simulation || {};
   if (sim.tEnd !== undefined && (!isNumber(sim.tEnd) || sim.tEnd <= 0))
     fail("simulation.tEnd must be positive");
@@ -142,4 +151,4 @@ export function validateModel(model) {
   return model;
 }
 
-export { MAX_SPECIES, MAX_REACTIONS, RATE_LAWS, MECHANISMS };
+export { SCHEMA_VERSION, MAX_SPECIES, MAX_REACTIONS, RATE_LAWS, MECHANISMS };

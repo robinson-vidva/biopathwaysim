@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "id": "mapk",
   "name": "MAPK/ERK cascade with negative feedback",
   "citation": {
@@ -43,7 +43,8 @@
   ],
   "reactions": [
     { "id": "v1",  "name": "MKKK activation (feedback)", "reactants": { "MKKK": 1 },  "products": { "MKKKp": 1 },
-      "rateLaw": { "type": "michaelis_menten", "Vmax": "stimulus", "Km": "K1", "feedback": { "species": "MAPKpp", "Ki": "fbKi", "n": "fbN" } } },
+      "rateLaw": { "type": "michaelis_menten", "Vmax": "stimulus", "Km": "K1",
+        "modulators": [ { "source": { "species": "MAPKpp" }, "mechanism": "noncompetitive", "Ki": "fbKi", "n": "fbN" } ] } },
     { "id": "v2",  "name": "MKKK-P deactivation", "reactants": { "MKKKp": 1 }, "products": { "MKKK": 1 },
       "rateLaw": { "type": "michaelis_menten", "Vmax": "V2", "Km": "K2" } },
     { "id": "v3",  "name": "MKK phosphorylation", "reactants": { "MKK": 1 }, "products": { "MKKp": 1 },
@@ -57,15 +58,12 @@
     { "id": "v7",  "name": "MAPK phosphorylation", "reactants": { "MAPK": 1 }, "products": { "MAPKp": 1 },
       "rateLaw": { "type": "michaelis_menten", "kcat": "k7", "Km": "K7", "enzyme": "MKKpp" } },
     { "id": "v8",  "name": "MAPK-P phosphorylation", "reactants": { "MAPKp": 1 }, "products": { "MAPKpp": 1 },
-      "rateLaw": { "type": "michaelis_menten", "kcat": "k8", "Km": "K8", "enzyme": "MKKpp" } },
+      "rateLaw": { "type": "michaelis_menten", "kcat": "k8", "Km": "K8", "enzyme": "MKKpp",
+        "modulators": [ { "source": { "dose": 0.0, "doseMax": 300.0 }, "mechanism": "noncompetitive", "Ki": 15.0 } ] } },
     { "id": "v9",  "name": "MAPK-PP dephosphorylation", "reactants": { "MAPKpp": 1 }, "products": { "MAPKp": 1 },
       "rateLaw": { "type": "michaelis_menten", "Vmax": "V9", "Km": "K9" } },
     { "id": "v10", "name": "MAPK-P dephosphorylation", "reactants": { "MAPKp": 1 }, "products": { "MAPK": 1 },
       "rateLaw": { "type": "michaelis_menten", "Vmax": "V10", "Km": "K10" } }
-  ],
-  "inhibitors": [
-    { "id": "mekInh", "name": "MEK inhibitor", "target": "v4", "mechanism": "noncompetitive",
-      "Ki": 15.0, "dose": 0.0, "doseMax": 300.0 }
   ],
   "simulation": { "tEnd": 9000, "rtol": 1e-6, "atol": 1e-9 }
 }

@@ -22,15 +22,13 @@ export function buildModel(model) {
 
   const defaultParams = {};
   for (const p of model.parameters) defaultParams[p.id] = p.value;
-  for (const inh of model.inhibitors || [])
-    defaultParams[inh.id] = inh.dose !== undefined ? inh.dose : 0;
 
   function derivatives(t, y, params) {
     const p = params || defaultParams;
     const n = speciesIds.length;
     const dydt = new Array(n).fill(0);
     for (let r = 0; r < model.reactions.length; r++) {
-      const rate = reactionRate(model.reactions[r], y, idx, p, model);
+      const rate = reactionRate(model.reactions[r], y, idx, p);
       const row = stoich[r];
       for (let i = 0; i < n; i++) {
         if (row[i] !== 0) dydt[i] += row[i] * rate;
