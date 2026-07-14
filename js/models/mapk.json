@@ -8,14 +8,14 @@
   },
   "units": { "concentration": "nM", "time": "s" },
   "species": [
-    { "id": "MKKK",    "name": "MAPKKK",           "initial": 90,  "plot": false },
-    { "id": "MKKKp",   "name": "MAPKKK-P",         "initial": 10,  "plot": false },
-    { "id": "MKK",     "name": "MAPKK",            "initial": 280, "plot": false },
-    { "id": "MKKp",    "name": "MAPKK-P",          "initial": 10,  "plot": false },
-    { "id": "MKKpp",   "name": "MAPKK-PP",         "initial": 10,  "plot": false },
-    { "id": "MAPK",    "name": "MAPK",             "initial": 280, "plot": false },
-    { "id": "MAPKp",   "name": "MAPK-P",           "initial": 10,  "plot": false },
-    { "id": "MAPKpp",  "name": "MAPK-PP (active ERK)", "initial": 10, "plot": true }
+    { "id": "MKKK",    "name": "MAPKKK",           "initial": 90,  "plot": false, "gene": "RAF1",   "ncbiGene": "5894" },
+    { "id": "MKKKp",   "name": "MAPKKK-P",         "initial": 10,  "plot": false, "gene": "RAF1",   "ncbiGene": "5894" },
+    { "id": "MKK",     "name": "MAPKK",            "initial": 280, "plot": false, "gene": "MAP2K1", "ncbiGene": "5604" },
+    { "id": "MKKp",    "name": "MAPKK-P",          "initial": 10,  "plot": false, "gene": "MAP2K1", "ncbiGene": "5604" },
+    { "id": "MKKpp",   "name": "MAPKK-PP",         "initial": 10,  "plot": false, "gene": "MAP2K1", "ncbiGene": "5604" },
+    { "id": "MAPK",    "name": "MAPK",             "initial": 280, "plot": false, "gene": "MAPK1",  "ncbiGene": "5594" },
+    { "id": "MAPKp",   "name": "MAPK-P",           "initial": 10,  "plot": false, "gene": "MAPK1",  "ncbiGene": "5594" },
+    { "id": "MAPKpp",  "name": "MAPK-PP (active ERK)", "initial": 10, "plot": true, "gene": "MAPK1", "ncbiGene": "5594" }
   ],
   "parameters": [
     { "id": "stimulus", "name": "Stimulus (V1)",     "value": 2.5,   "min": 0.0,  "max": 5.0,  "scale": "linear", "unit": "nM/s" },

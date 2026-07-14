@@ -38,11 +38,13 @@ the trace is drawn beneath it. Scrubbing the cursor moves all three together.
 
 ## Vendored dependencies
 
-The pathway diagram uses [Cytoscape.js](https://js.cytoscape.org/), pinned to
-version **3.31.4**, vendored as a single UMD file at `vendor/cytoscape.min.js`
-and loaded with a plain `<script>` tag. It is checked in rather than loaded from
-a CDN so the tool keeps working offline and when opened directly from disk. No
-other third-party code is used.
+The pathway diagram uses [Cytoscape.js](https://js.cytoscape.org/) (pinned to
+**3.31.4**) for rendering and [dagre](https://github.com/dagrejs/dagre)
+(**0.8.5**) with [cytoscape-dagre](https://github.com/cytoscape/cytoscape.js-dagre)
+(**2.5.0**) for the hierarchical layout. All three are vendored as UMD files
+under `vendor/` and loaded with plain `<script>` tags. They are checked in
+rather than loaded from a CDN so the tool keeps working offline and when opened
+directly from disk. No other third-party code is used.
 
 ## Bundled models
 
@@ -102,6 +104,13 @@ it has no effect on the numerics.
 `id` is a unique identifier referenced elsewhere. `initial` is the starting
 concentration. `plot` sets whether the species is shown on the time course by
 default. A model may define at most **20 species**.
+
+A species may optionally carry `"gene"` (an official gene symbol) and
+`"ncbiGene"` (an NCBI Gene id). When present, the gene symbol is shown when the
+node is hovered and a link to the corresponding NCBI Gene record is offered in
+the species editor. Both are descriptive metadata and have no effect on the
+numerics. In the bundled MAPK model the three cascade tiers are annotated with
+their canonical genes (RAF1, MAP2K1, MAPK1).
 
 ### Parameters
 

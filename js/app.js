@@ -239,7 +239,9 @@
       text = "flux(" + hovered.rxn + ") = " + fmtNum(rate) + (cU ? " " + cU + "/" + tU : "");
     } else if (hovered.kind === "species") {
       const raw = hovered.id.slice(2);
-      text = raw + " = " + fmtNum(y[sys.idx[raw]]) + (cU ? " " + cU : "");
+      const sp = model.species.find((s) => s.id === raw);
+      const g = sp && sp.gene ? " (" + sp.gene + ")" : "";
+      text = raw + g + " = " + fmtNum(y[sys.idx[raw]]) + (cU ? " " + cU : "");
     } else if (hovered.kind === "reaction") {
       const raw = hovered.id.slice(2);
       const r = model.reactions.find((x) => x.id === raw);

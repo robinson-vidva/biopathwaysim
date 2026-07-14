@@ -145,6 +145,15 @@
       container.appendChild(field("name", textInput(sp.name || "", (v) => { sp.name = v; edit(false); })));
       container.appendChild(field("initial", numInput(sp.initial, (v) => { sp.initial = v; edit(false); })));
       container.appendChild(field("plot", checkbox(sp.plot, (c) => { sp.plot = c; edit(false); })));
+      container.appendChild(field("gene", textInput(sp.gene || "", (v) => { sp.gene = v || undefined; edit(false); })));
+      container.appendChild(field("NCBI gene id", textInput(sp.ncbiGene != null ? String(sp.ncbiGene) : "",
+        (v) => { sp.ncbiGene = v || undefined; }, () => { commit(); rerender(); })));
+      if (sp.ncbiGene) {
+        const link = el("a", "de-ncbi", "View " + (sp.gene || sp.ncbiGene) + " on NCBI Gene");
+        link.href = "https://www.ncbi.nlm.nih.gov/gene/" + encodeURIComponent(sp.ncbiGene);
+        link.target = "_blank"; link.rel = "noopener";
+        container.appendChild(link);
+      }
       container.appendChild(btn("Delete species", "b-remove de-del", () => { deleteNode(model, nodeId); commit(); onClose(); }));
     } else if (kind === "r") {
       const r = model.reactions.find((x) => x.id === raw);

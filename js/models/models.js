@@ -20,49 +20,65 @@
       "id": "MKKK",
       "name": "MAPKKK",
       "initial": 90,
-      "plot": false
+      "plot": false,
+      "gene": "RAF1",
+      "ncbiGene": "5894"
     },
     {
       "id": "MKKKp",
       "name": "MAPKKK-P",
       "initial": 10,
-      "plot": false
+      "plot": false,
+      "gene": "RAF1",
+      "ncbiGene": "5894"
     },
     {
       "id": "MKK",
       "name": "MAPKK",
       "initial": 280,
-      "plot": false
+      "plot": false,
+      "gene": "MAP2K1",
+      "ncbiGene": "5604"
     },
     {
       "id": "MKKp",
       "name": "MAPKK-P",
       "initial": 10,
-      "plot": false
+      "plot": false,
+      "gene": "MAP2K1",
+      "ncbiGene": "5604"
     },
     {
       "id": "MKKpp",
       "name": "MAPKK-PP",
       "initial": 10,
-      "plot": false
+      "plot": false,
+      "gene": "MAP2K1",
+      "ncbiGene": "5604"
     },
     {
       "id": "MAPK",
       "name": "MAPK",
       "initial": 280,
-      "plot": false
+      "plot": false,
+      "gene": "MAPK1",
+      "ncbiGene": "5594"
     },
     {
       "id": "MAPKp",
       "name": "MAPK-P",
       "initial": 10,
-      "plot": false
+      "plot": false,
+      "gene": "MAPK1",
+      "ncbiGene": "5594"
     },
     {
       "id": "MAPKpp",
       "name": "MAPK-PP (active ERK)",
       "initial": 10,
-      "plot": true
+      "plot": true,
+      "gene": "MAPK1",
+      "ncbiGene": "5594"
     }
   ],
   "parameters": [

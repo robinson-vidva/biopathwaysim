@@ -173,6 +173,8 @@
         row.appendChild(field("name", textInput(sp.name || "", (v) => { sp.name = v; commit(false); })));
         row.appendChild(field("initial", numInput(sp.initial, (v) => { sp.initial = v; commit(false); })));
         row.appendChild(field("plot", checkbox(sp.plot, (c) => { sp.plot = c; commit(false); })));
+        row.appendChild(field("gene", textInput(sp.gene || "", (v) => { sp.gene = v || undefined; commit(false); })));
+        row.appendChild(field("NCBI id", textInput(sp.ncbiGene != null ? String(sp.ncbiGene) : "", (v) => { sp.ncbiGene = v || undefined; commit(false); })));
         row.appendChild(removeBtn(() => { model.species.splice(i, 1); commit(true); }));
         s.appendChild(row);
       });

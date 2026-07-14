@@ -79,6 +79,14 @@
     return nodes.concat(edges);
   }
 
+  // Dagre gives a clean layered layout for a cascade; fall back to the built-in
+  // breadthfirst if the plugin is unavailable.
+  function autoLayout(cy) {
+    const dagre = { name: "dagre", rankDir: "TB", nodeSep: 26, rankSep: 46, edgeSep: 8, padding: 18, animate: false };
+    const bf = { name: "breadthfirst", directed: true, spacingFactor: 1.15, padding: 18, avoidOverlap: true };
+    try { cy.layout(dagre).run(); } catch (e) { cy.layout(bf).run(); }
+  }
+
   function createDiagram(container) {
     if (!root.cytoscape) return null;
     const cy = root.cytoscape({
@@ -106,7 +114,7 @@
         else unpos.push(n);
       });
       if (nodes.length > 0 && unpos.length === nodes.length) {
-        cy.layout({ name: "breadthfirst", directed: true, spacingFactor: 1.15, padding: 18, avoidOverlap: true }).run();
+        autoLayout(cy);
       } else if (unpos.length > 0) {
         const ext = cy.extent();
         const bx = (ext.x1 + ext.x2) / 2, by = (ext.y1 + ext.y2) / 2;
@@ -183,7 +191,7 @@
     }
 
     function relayout() {
-      cy.layout({ name: "breadthfirst", directed: true, spacingFactor: 1.15, padding: 18, avoidOverlap: true }).run();
+      autoLayout(cy);
       cy.fit(undefined, 28);
     }
     function fit() { cy.resize(); cy.fit(undefined, 28); }

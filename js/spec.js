@@ -114,6 +114,10 @@
       const id = requireId(s, "species", i);
       if (species.has(id)) fail("duplicate species id '" + id + "'");
       if (!isNumber(s.initial)) fail("species '" + id + "' initial must be a number");
+      // Optional gene annotation (NCBI). Purely descriptive; the engine ignores it.
+      if (s.gene !== undefined && typeof s.gene !== "string") fail("species '" + id + "' gene must be a string");
+      if (s.ncbiGene !== undefined && typeof s.ncbiGene !== "string" && !isNumber(s.ncbiGene))
+        fail("species '" + id + "' ncbiGene must be a string or number");
       species.set(id, s);
     });
 
