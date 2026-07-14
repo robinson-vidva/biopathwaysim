@@ -1,4 +1,4 @@
-// Wiring: pick or build a model, integrate, redraw, persist.
+// Wiring: pick or build a model, integrate, render diagram + plots, persist.
 (function (root) {
   "use strict";
   const NS = root.BPS || (root.BPS = {});
@@ -14,24 +14,31 @@
   const doseCaptionEl = document.getElementById("dose-caption");
   const doseNoteEl = document.getElementById("dose-note");
   const sweepRunBtn = document.getElementById("sweep-run");
-
-  const NONMONOTONE_NOTE = "Low-dose inhibition can transiently increase downstream output by " +
-    "relieving negative feedback. This is a property of the network, not a numerical artifact.";
-  const builderEl = document.getElementById("builder");
   const builderBodyEl = document.getElementById("builder-body");
   const builderStatusEl = document.getElementById("builder-status");
-  const btnEdit = document.getElementById("btn-edit");
   const btnNew = document.getElementById("btn-new");
   const btnImport = document.getElementById("btn-import");
   const fileImport = document.getElementById("file-import");
   const btnExport = document.getElementById("btn-export");
   const btnExportCsv = document.getElementById("btn-export-csv");
+  const cyEl = document.getElementById("cy");
+  const cyPlay = document.getElementById("cy-play");
+  const cyTime = document.getElementById("cy-time");
+  const cyTimeLabel = document.getElementById("cy-time-label");
+  const cyFit = document.getElementById("cy-fit");
+  const cyRelayout = document.getElementById("cy-relayout");
+
+  const NONMONOTONE_NOTE = "Low-dose inhibition can transiently increase downstream output by " +
+    "relieving negative feedback. This is a property of the network, not a numerical artifact.";
 
   let specs = [];
   let currentSpec, model, sys, params, visible, ctx, sweepCfg;
-  let lastSol = null;
+  let lastSol = null, norms = null;
   let runTimer = null, drawTimer = null, liveTimer = null;
-  let builderOpen = false;
+  let diagram = null, diagramSig = "";
+  let playing = true, seekFrac = 0, playWall0 = null;
+  const PLAY_MS = 14000;
+  let lastDose = null;
 
   const READOUT_AXIS = {
     mean: "time-averaged mean", final: "final value",
@@ -48,6 +55,29 @@
     const p = paramsFromModel(m);
     if (params) for (const k in params) if (k in p) p[k] = params[k];
     return p;
+  }
+
+  // --- tabs ----------------------------------------------------------------
+
+  function setActiveTab(groupName, tabName) {
+    const group = document.querySelector('.tabgroup[data-group="' + groupName + '"]');
+    if (!group) return;
+    group.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.getAttribute("data-tab") === tabName));
+    group.querySelectorAll(".tabpanel").forEach((p) => p.classList.toggle("active", p.getAttribute("data-panel") === tabName));
+    onTabShown(tabName);
+  }
+
+  function onTabShown(name) {
+    if (name === "timecourse") scheduleDraw();
+    if (name === "dose") drawDose();
+  }
+
+  function initTabs() {
+    document.querySelectorAll(".tabgroup").forEach((group) => {
+      group.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => setActiveTab(group.getAttribute("data-group"), tab.getAttribute("data-tab")));
+      });
+    });
   }
 
   // --- simulate / draw -----------------------------------------------------
@@ -81,6 +111,7 @@
       rtol: sim.rtol || 1e-6, atol: sim.atol || 1e-9, hmax: tEnd / 400,
     });
     const ms = performance.now() - t0;
+    if (diagram) norms = diagram.computeNorms(model, sys, lastSol, params);
     draw();
     NS.renderEquations(equationsEl, model, params);
     runNoteEl.textContent = lastSol.t.length + " steps, " + ms.toFixed(0) + " ms" + (ms > 200 ? " (slow)" : "");
@@ -88,6 +119,88 @@
 
   function scheduleRun() { clearTimeout(runTimer); runTimer = setTimeout(integrateAndDraw, 50); }
   function scheduleDraw() { clearTimeout(drawTimer); drawTimer = setTimeout(draw, 50); }
+
+  // --- diagram + playback --------------------------------------------------
+
+  function structureSig(m) {
+    return JSON.stringify({
+      s: m.species.map((s) => s.id),
+      r: m.reactions.map((r) => ({
+        id: r.id,
+        rc: Object.keys(r.reactants || {}),
+        pr: Object.keys(r.products || {}),
+        en: (r.rateLaw || {}).enzyme || null,
+        md: ((r.rateLaw || {}).modulators || []).map((x) => x.id + ":" + (x.source && (x.source.species || x.source.parameter))),
+      })),
+    });
+  }
+
+  function renderDiagramIfChanged(force) {
+    if (!diagram) return;
+    const sig = structureSig(model);
+    if (!force && sig === diagramSig) return;
+    diagramSig = sig;
+    diagram.render(model, model.layout, {
+      onSpecies: (id) => selectFromDiagram("species", id),
+      onReaction: (id) => selectFromDiagram("reaction", id),
+      onBackground: () => { diagram.clearHighlight(); clearEqHighlight(); },
+    });
+  }
+
+  function fmtTime(t) {
+    const u = model.units ? model.units.time : "s";
+    return (t >= 100 ? Math.round(t) : Math.round(t * 100) / 100) + " " + u;
+  }
+
+  function playbackTick(nowMs) {
+    requestAnimationFrame(playbackTick);
+    if (!diagram || !lastSol || !sys || !norms) return;
+    const tEnd = lastSol.t[lastSol.t.length - 1] || 1;
+    if (playing) {
+      if (playWall0 == null) playWall0 = nowMs - seekFrac * PLAY_MS;
+      let f = ((nowMs - playWall0) / PLAY_MS) % 1;
+      if (f < 0) f += 1;
+      seekFrac = f;
+      cyTime.value = Math.round(seekFrac * 1000);
+    }
+    const t = seekFrac * tEnd;
+    diagram.frame(model, sys, interpState(lastSol, t), params, norms);
+    cyTimeLabel.textContent = fmtTime(t);
+  }
+
+  function interpState(sol, t) {
+    const ts = sol.t, n = ts.length;
+    if (t <= ts[0]) return sol.y[0];
+    if (t >= ts[n - 1]) return sol.y[n - 1];
+    let lo = 0, hi = n - 1;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (ts[mid] <= t) lo = mid; else hi = mid; }
+    const a = ts[lo], b = ts[hi], f = (b > a) ? (t - a) / (b - a) : 0;
+    const ya = sol.y[lo], yb = sol.y[hi], out = new Array(ya.length);
+    for (let i = 0; i < ya.length; i++) out[i] = ya[i] + (yb[i] - ya[i]) * f;
+    return out;
+  }
+
+  function setPlaying(p) {
+    playing = p;
+    playWall0 = null;
+    cyPlay.textContent = playing ? "Pause" : "Play";
+  }
+
+  // --- diagram <-> equations selection -------------------------------------
+
+  function clearEqHighlight() { equationsEl.querySelectorAll(".eq-hi").forEach((e) => e.classList.remove("eq-hi")); }
+
+  function selectFromDiagram(kind, id) {
+    setActiveTab("side", "equations");
+    clearEqHighlight();
+    const attr = kind === "species" ? "data-species" : "data-reaction";
+    let target = null;
+    equationsEl.querySelectorAll("[" + attr + "]").forEach((e) => {
+      if (e.getAttribute(attr) === id) { e.classList.add("eq-hi"); if (!target) target = e; }
+    });
+    if (target) target.scrollIntoView({ block: "nearest" });
+    if (diagram) diagram.highlight(kind, id);
+  }
 
   // --- dose-response sweep -------------------------------------------------
 
@@ -107,6 +220,8 @@
     return out;
   }
 
+  function drawDose() { if (lastDose) NS.drawDoseResponse(dosePlot, lastDose.pts, lastDose.opts); }
+
   function runSweep() {
     if (!sys) return;
     const param = model.parameters.find((p) => p.id === sweepCfg.paramId);
@@ -125,11 +240,12 @@
       const useTimeAvg = anyOsc && (readout === "mean" || readout === "final");
       const yName = useTimeAvg && readout === "final" ? "time-averaged final" : READOUT_AXIS[readout];
       const xUnit = param.unit ? " (" + param.unit + ")" : "";
-      NS.drawDoseResponse(dosePlot, pts, {
+      lastDose = { pts, opts: {
         xLabel: (param.name || param.id) + xUnit,
         yLabel: yName + " " + species.id + (conc ? " (" + conc + ")" : ""),
         xLog: sweepCfg.spacing === "log",
-      });
+      } };
+      drawDose();
 
       let cap = READOUT_CAPTION[readout] + " of " + (species.name || species.id) +
         " versus " + (param.name || param.id) + ".";
@@ -146,7 +262,6 @@
         doseNoteEl.textContent = "";
         doseNoteEl.hidden = true;
       }
-
       sweepRunBtn.disabled = false;
       sweepRunBtn.textContent = "Run sweep";
     }, 0);
@@ -165,8 +280,6 @@
     };
   }
 
-  // A curve "rises before it falls" when its greatest value is at an interior
-  // point, meaningfully above both ends. Detected from the data, not the model.
   function risesBeforeFalls(ys) {
     const v = ys.filter((y) => isFinite(y));
     if (v.length < 3) return false;
@@ -194,18 +307,20 @@
     }
   }
 
-  // --- activate a model (tolerant of invalid, still-being-built models) ----
+  // --- activate ------------------------------------------------------------
 
   function activate() {
     model = clone(currentSpec);
     initSweepCfg();
+    lastDose = null;
     NS.renderCitation(citationEl, model);
+    refreshBuilder();
 
     let err = null;
     try { NS.validateModel(model); } catch (e) { err = e.message; }
 
     if (err) {
-      sys = null;
+      sys = null; norms = null;
       params = paramsFromModel(model);
       visible = {};
       for (const s of model.species) visible[s.id] = !!s.plot;
@@ -217,9 +332,9 @@
       clearCanvas(plotCanvas);
       clearCanvas(dosePlot);
       doseCaptionEl.textContent = "";
-      doseNoteEl.textContent = "";
-      doseNoteEl.hidden = true;
+      doseNoteEl.textContent = ""; doseNoteEl.hidden = true;
       runNoteEl.textContent = "model invalid — not simulated";
+      diagramSig = ""; renderDiagramIfChanged(true);
     } else {
       sys = NS.buildModel(model);
       params = Object.assign({}, sys.defaultParams);
@@ -228,10 +343,10 @@
       ctx = { params, visible, sys, run: scheduleRun, redraw: scheduleDraw, reset: activate };
       NS.buildControls(controlsEl, model, ctx);
       NS.buildSweepControls(sweepControlsEl, model, sweepCfg);
+      diagramSig = ""; renderDiagramIfChanged(true);
       integrateAndDraw();
       runSweep();
     }
-    if (builderOpen) refreshBuilder();
   }
 
   // --- builder integration -------------------------------------------------
@@ -242,14 +357,14 @@
 
   function scheduleLiveUpdate() { clearTimeout(liveTimer); liveTimer = setTimeout(liveUpdate, 80); }
 
-  // Called by the builder after every edit. Returns an error string or null.
   function applyEdit() {
     NS.renderEquations(equationsEl, model, eqParamsFor(model));
+    renderDiagramIfChanged(false);
     let err = null;
     try { NS.validateModel(model); } catch (e) { err = e.message; }
     if (err) {
       clearTimeout(liveTimer);
-      sys = null;
+      sys = null; norms = null;
       runNoteEl.textContent = "model invalid — not simulated";
       return err;
     }
@@ -279,8 +394,7 @@
     const blob = new Blob([text], { type: mime || "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
+    a.href = url; a.download = filename;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
@@ -312,10 +426,7 @@
         ". Convert the model, or export it from this version of the tool.");
       return;
     }
-    try { NS.validateModel(obj); } catch (e) {
-      window.alert("Import refused: " + e.message);
-      return;
-    }
+    try { NS.validateModel(obj); } catch (e) { window.alert("Import refused: " + e.message); return; }
     specs.push(obj);
     const o = document.createElement("option");
     o.value = String(specs.length - 1);
@@ -329,12 +440,9 @@
   function blankModel() {
     return {
       schemaVersion: NS.SCHEMA_VERSION,
-      id: "new_model",
-      name: "New model",
+      id: "new_model", name: "New model",
       units: { concentration: "uM", time: "s" },
-      species: [],
-      parameters: [],
-      reactions: [],
+      species: [], parameters: [], reactions: [],
       simulation: { tEnd: 100, rtol: 1e-6, atol: 1e-9 },
     };
   }
@@ -342,6 +450,8 @@
   // --- boot ----------------------------------------------------------------
 
   function boot() {
+    initTabs();
+    diagram = NS.createDiagram ? NS.createDiagram(cyEl) : null;
     specs = (NS.models || []).slice();
     if (!specs.length) {
       controlsEl.textContent = "No models are bundled. Run scripts/build-models.js to generate js/models/models.js.";
@@ -356,14 +466,9 @@
     picker.addEventListener("change", () => { currentSpec = specs[Number(picker.value)]; activate(); });
     currentSpec = specs[0];
     activate();
+    requestAnimationFrame(playbackTick);
   }
 
-  btnEdit.addEventListener("click", () => {
-    builderOpen = !builderOpen;
-    builderEl.hidden = !builderOpen;
-    btnEdit.classList.toggle("active", builderOpen);
-    if (builderOpen) refreshBuilder();
-  });
   btnNew.addEventListener("click", () => {
     const m = blankModel();
     specs.push(m);
@@ -373,8 +478,8 @@
     picker.appendChild(o);
     picker.value = String(specs.length - 1);
     currentSpec = m;
-    if (!builderOpen) btnEdit.click();
     activate();
+    setActiveTab("side", "build");
   });
   btnImport.addEventListener("click", () => fileImport.click());
   fileImport.addEventListener("change", () => {
@@ -388,7 +493,13 @@
   btnExport.addEventListener("click", exportModel);
   btnExportCsv.addEventListener("click", exportCsv);
   sweepRunBtn.addEventListener("click", runSweep);
-  window.addEventListener("resize", () => { scheduleDraw(); });
+
+  cyPlay.addEventListener("click", () => setPlaying(!playing));
+  cyTime.addEventListener("input", () => { setPlaying(false); seekFrac = Number(cyTime.value) / 1000; });
+  cyFit.addEventListener("click", () => { if (diagram) diagram.fit(); });
+  cyRelayout.addEventListener("click", () => { if (diagram) { diagram.relayout(); } });
+
+  window.addEventListener("resize", () => { scheduleDraw(); if (diagram) diagram.fit(); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 })(typeof globalThis !== "undefined" ? globalThis : this);

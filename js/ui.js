@@ -260,7 +260,11 @@
 
     const odes = el("div", "eq-block");
     odes.appendChild(el("h3", null, "System of ODEs"));
-    for (const s of model.species) odes.appendChild(el("div", "eq-line", odeLine(s, model)));
+    for (const s of model.species) {
+      const line = el("div", "eq-line", odeLine(s, model));
+      line.setAttribute("data-species", s.id);
+      odes.appendChild(line);
+    }
     container.appendChild(odes);
 
     const laws = el("div", "eq-block");
@@ -268,7 +272,9 @@
     for (const r of model.reactions) {
       let rhs;
       try { rhs = renderRateLaw(r, params); } catch (e) { rhs = '<span class="eq-mod">(incomplete)</span>'; }
-      laws.appendChild(el("div", "eq-line", '<span class="eq-rxn">' + r.id + "</span> = " + rhs));
+      const line = el("div", "eq-line", '<span class="eq-rxn">' + r.id + "</span> = " + rhs);
+      line.setAttribute("data-reaction", r.id);
+      laws.appendChild(line);
     }
     container.appendChild(laws);
 

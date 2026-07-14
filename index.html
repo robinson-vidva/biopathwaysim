@@ -22,10 +22,9 @@
   </header>
 
   <div class="toolbar">
-    <button class="tb-btn" id="btn-edit">Edit model</button>
-    <button class="tb-btn" id="btn-new">New blank model</button>
     <button class="tb-btn" id="btn-import">Import model</button>
     <input type="file" id="file-import" accept=".json,application/json" hidden>
+    <button class="tb-btn" id="btn-new">New blank model</button>
     <button class="tb-btn" id="btn-export">Export model (.json)</button>
     <button class="tb-btn" id="btn-export-csv">Export trajectories (.csv)</button>
   </div>
@@ -33,43 +32,63 @@
   <section class="citation" id="citation" aria-live="polite"></section>
 
   <main class="layout">
-    <aside class="controls" id="controls"></aside>
-    <div class="viz">
-      <div class="panel plot-panel">
-        <div class="panel-head">
-          <h2>Time course</h2>
-          <span class="run-note" id="run-note"></span>
-        </div>
-        <div class="plot-wrap">
-          <canvas id="plot"></canvas>
+    <section class="panel diagram-panel">
+      <div class="panel-head">
+        <h2>Pathway</h2>
+        <div class="diagram-controls">
+          <button class="mini-btn" id="cy-play">Pause</button>
+          <input type="range" id="cy-time" min="0" max="1000" value="0" step="1" aria-label="playback time">
+          <span class="run-note" id="cy-time-label"></span>
+          <button class="mini-btn" id="cy-fit">Fit</button>
+          <button class="mini-btn" id="cy-relayout">Re-layout</button>
         </div>
       </div>
-      <div class="panel dose-panel">
-        <div class="panel-head">
-          <h2>Dose-response</h2>
+      <div id="cy" class="cy"></div>
+      <div class="diagram-edit" id="diagram-edit" hidden></div>
+    </section>
+
+    <section class="panel side">
+      <div class="tabgroup" data-group="side">
+        <div class="tabs">
+          <button class="tab active" data-tab="controls">Controls</button>
+          <button class="tab" data-tab="equations">Equations</button>
+          <button class="tab" data-tab="build">Build</button>
+        </div>
+        <div class="tabpanel active" data-panel="controls">
+          <div id="controls"></div>
+        </div>
+        <div class="tabpanel" data-panel="equations">
+          <div class="panel-head sub"><span class="hint">values substituted live from the controls</span></div>
+          <div class="equations" id="equations"></div>
+        </div>
+        <div class="tabpanel" data-panel="build">
+          <div class="panel-head sub"><span class="builder-status" id="builder-status"></span></div>
+          <div class="builder-body" id="builder-body"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="panel plots">
+    <div class="tabgroup" data-group="plots">
+      <div class="tabs">
+        <button class="tab active" data-tab="timecourse">Time course</button>
+        <button class="tab" data-tab="dose">Dose-response</button>
+        <span class="run-note" id="run-note"></span>
+      </div>
+      <div class="tabpanel active" data-panel="timecourse">
+        <div class="plot-wrap"><canvas id="plot"></canvas></div>
+      </div>
+      <div class="tabpanel" data-panel="dose">
+        <div class="dose-head">
+          <div class="sweep-controls" id="sweep-controls"></div>
           <button class="btn-run" id="sweep-run">Run sweep</button>
         </div>
-        <div class="sweep-controls" id="sweep-controls"></div>
         <div class="plot-wrap"><canvas id="dose-plot"></canvas></div>
         <p class="dose-caption" id="dose-caption"></p>
         <p class="dose-note" id="dose-note" hidden></p>
       </div>
-      <div class="panel equations-panel">
-        <div class="panel-head">
-          <h2>Assembled equations</h2>
-          <span class="hint">values substituted live from the controls</span>
-        </div>
-        <div class="equations" id="equations"></div>
-      </div>
     </div>
-  </main>
-
-  <section class="builder-panel" id="builder" hidden>
-    <div class="panel-head">
-      <h2>Model builder</h2>
-      <span class="builder-status" id="builder-status"></span>
-    </div>
-    <div class="builder-body" id="builder-body"></div>
   </section>
 
   <footer class="disclaimer">
@@ -78,12 +97,14 @@
     not be interpreted as a quantitative prediction.
   </footer>
 
+  <script data-cfasync="false" src="vendor/cytoscape.min.js"></script>
   <script data-cfasync="false" src="js/spec.js"></script>
   <script data-cfasync="false" src="js/rates.js"></script>
   <script data-cfasync="false" src="js/assemble.js"></script>
   <script data-cfasync="false" src="js/integrator.js"></script>
   <script data-cfasync="false" src="js/sweep.js"></script>
   <script data-cfasync="false" src="js/plot.js"></script>
+  <script data-cfasync="false" src="js/diagram.js"></script>
   <script data-cfasync="false" src="js/ui.js"></script>
   <script data-cfasync="false" src="js/builder.js"></script>
   <script data-cfasync="false" src="js/models/models.js"></script>

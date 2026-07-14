@@ -284,3 +284,65 @@ input[type="range"]:focus::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(8,1
   .layout { grid-template-columns: 1fr; }
   .controls { border-right: none; border-bottom: 1px solid var(--line); min-height: 0; }
 }
+
+/* --- Phase 6: diagram-first layout, tabs --- */
+.layout {
+  grid-template-columns: 1fr 400px;
+  gap: 0;
+  padding: 0;
+}
+.diagram-panel {
+  margin: 16px 0 16px 20px;
+  display: flex; flex-direction: column;
+}
+.diagram-controls { display: flex; align-items: center; gap: 8px; }
+.diagram-controls input[type="range"] { width: 130px; margin: 0; }
+.mini-btn {
+  font-family: var(--sans); font-size: 11px; color: var(--slate);
+  background: var(--bg); border: 1px solid var(--line-2); border-radius: 3px;
+  padding: 3px 9px; cursor: pointer;
+}
+.mini-btn:hover { border-color: var(--slate-3); }
+.cy { width: 100%; height: 540px; background: var(--bg); }
+
+.side {
+  margin: 16px 20px 16px 0; border-left: none;
+  min-height: 0; padding: 0;
+}
+.controls { padding: 16px 16px 28px; border-right: none; min-height: 0; }
+
+.tabgroup { display: flex; flex-direction: column; }
+.tabs {
+  display: flex; align-items: center; gap: 2px;
+  border-bottom: 1px solid var(--line); padding: 0 8px;
+}
+.tab {
+  font-family: var(--sans); font-size: 13px; color: var(--slate-3);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  padding: 9px 12px; cursor: pointer; margin-bottom: -1px;
+}
+.tab:hover { color: var(--slate); }
+.tab.active { color: var(--teal-dark); border-bottom-color: var(--teal); font-weight: 500; }
+.tabs .run-note { margin-left: auto; padding-right: 8px; }
+.tabpanel { display: none; }
+.tabpanel.active { display: block; }
+.panel-head.sub { padding: 8px 16px; border-bottom: 1px solid var(--line); }
+.equations { max-height: 620px; overflow-y: auto; }
+.builder-body { max-height: 620px; overflow-y: auto; }
+
+.plots { margin: 0 20px 20px; }
+.dose-head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.dose-head .sweep-controls { border-bottom: none; flex: 1; }
+.dose-head .btn-run { margin: 0 16px 12px 0; }
+
+.eq-line.eq-hi { background: #ecfeff; border-radius: 3px; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .diagram-panel { margin: 12px; }
+  .side { margin: 0 12px 12px; }
+  .cy { height: 420px; }
+}

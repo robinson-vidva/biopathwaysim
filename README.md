@@ -16,6 +16,26 @@ required; the file may be opened directly from disk.
 The engine is also usable from Node. The validation gate is run with
 `node test/validate.js`.
 
+## Interface
+
+The pathway diagram is the primary view. Species are drawn as round nodes,
+reactions as square nodes, and drug doses as hexagon nodes; a reaction is never
+an edge, so a reaction with several reactants, products, an enzyme, and
+modulators is represented faithfully. During a simulation, node fill intensity
+tracks the current concentration and edge width tracks the current reaction
+flux, so a cascade can be watched oscillating through the diagram. Clicking a
+species or reaction node highlights its line in the equations panel. The right
+pane is tabbed (Controls, Equations, Build) and the plots below are tabbed
+(Time course, Dose-response).
+
+## Vendored dependencies
+
+The pathway diagram uses [Cytoscape.js](https://js.cytoscape.org/), pinned to
+version **3.31.4**, vendored as a single UMD file at `vendor/cytoscape.min.js`
+and loaded with a plain `<script>` tag. It is checked in rather than loaded from
+a CDN so the tool keeps working offline and when opened directly from disk. No
+other third-party code is used.
+
 ## Bundled models
 
 Two previously published models are included as starting points. Both are
