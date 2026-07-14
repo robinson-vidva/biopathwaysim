@@ -389,5 +389,6 @@
   btnExportCsv.addEventListener("click", exportCsv);
   sweepRunBtn.addEventListener("click", runSweep);
   window.addEventListener("resize", () => { scheduleDraw(); });
-  boot();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 })(typeof globalThis !== "undefined" ? globalThis : this);
