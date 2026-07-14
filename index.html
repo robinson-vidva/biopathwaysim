@@ -36,12 +36,27 @@
       <div class="panel-head">
         <h2>Pathway</h2>
         <div class="diagram-controls">
+          <button class="mini-btn" id="cy-edit">Edit diagram</button>
           <button class="mini-btn" id="cy-play">Pause</button>
           <input type="range" id="cy-time" min="0" max="1000" value="0" step="1" aria-label="playback time">
           <span class="run-note" id="cy-time-label"></span>
           <button class="mini-btn" id="cy-fit">Fit</button>
           <button class="mini-btn" id="cy-relayout">Re-layout</button>
         </div>
+      </div>
+      <div class="edit-toolbar" id="edit-toolbar" hidden>
+        <button class="mini-btn" id="ce-add-species">Add species</button>
+        <button class="mini-btn" id="ce-add-reaction">Add reaction</button>
+        <label class="ce-mode-label">Drag creates
+          <select id="ce-mode">
+            <option value="move">Move nodes</option>
+            <option value="substrate">Reactant / product</option>
+            <option value="enzyme">Enzyme</option>
+            <option value="inhibitor">Inhibitor</option>
+          </select>
+        </label>
+        <span class="ce-hint" id="ce-hint"></span>
+        <span class="ce-error" id="ce-error"></span>
       </div>
       <div id="cy" class="cy"></div>
       <div class="diagram-edit" id="diagram-edit" hidden></div>
@@ -105,6 +120,7 @@
   <script data-cfasync="false" src="js/sweep.js"></script>
   <script data-cfasync="false" src="js/plot.js"></script>
   <script data-cfasync="false" src="js/diagram.js"></script>
+  <script data-cfasync="false" src="js/diagramedit.js"></script>
   <script data-cfasync="false" src="js/ui.js"></script>
   <script data-cfasync="false" src="js/builder.js"></script>
   <script data-cfasync="false" src="js/models/models.js"></script>

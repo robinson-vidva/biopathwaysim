@@ -89,31 +89,41 @@
       boxSelectionEnabled: false,
     });
 
-    function render(model, positions, handlers) {
+    // opts.preserve keeps the current on-screen positions across a re-render
+    // (used while editing); otherwise it lays out or restores from `positions`.
+    function render(model, positions, opts) {
+      opts = opts || {};
+      const prev = {};
+      if (opts.preserve) cy.nodes().forEach((n) => { prev[n.id()] = n.position(); });
       cy.elements().remove();
       cy.add(buildElements(model));
-      const ids = cy.nodes().map((n) => n.id());
-      const allHave = positions && ids.length > 0 &&
-        ids.every((id) => positions[id] && isFinite(positions[id].x) && isFinite(positions[id].y));
-      if (allHave) {
-        cy.nodes().forEach((n) => n.position({ x: positions[n.id()].x, y: positions[n.id()].y }));
-      } else if (ids.length > 0) {
+      const nodes = cy.nodes();
+      const src = opts.preserve ? Object.assign({}, positions || {}, prev) : (positions || {});
+      const unpos = [];
+      nodes.forEach((n) => {
+        const p = src[n.id()];
+        if (p && isFinite(p.x) && isFinite(p.y)) n.position({ x: p.x, y: p.y });
+        else unpos.push(n);
+      });
+      if (nodes.length > 0 && unpos.length === nodes.length) {
         cy.layout({ name: "breadthfirst", directed: true, spacingFactor: 1.15, padding: 18, avoidOverlap: true }).run();
+      } else if (unpos.length > 0) {
+        const ext = cy.extent();
+        const bx = (ext.x1 + ext.x2) / 2, by = (ext.y1 + ext.y2) / 2;
+        unpos.forEach((n, k) => n.position({ x: bx + (k % 3) * 70, y: by + Math.floor(k / 3) * 70 }));
       }
       cy.resize();
-      if (ids.length > 0) cy.fit(undefined, 28);
+      if (!opts.preserve && nodes.length > 0) cy.fit(undefined, 28);
+    }
 
+    function onTap(handlers) {
       cy.off("tap");
       cy.on("tap", "node", (evt) => {
         const d = evt.target.data();
         if (!handlers) return;
-        if (d.kind === "species" && handlers.onSpecies) handlers.onSpecies(d.label);
-        else if (d.kind === "reaction" && handlers.onReaction) handlers.onReaction(d.label);
-        else if (d.kind === "drug" && handlers.onDrug) handlers.onDrug(d.id.slice(2));
+        if (handlers.onNode) handlers.onNode(evt.target.id(), d.kind, d.label);
       });
-      if (handlers && handlers.onBackground) {
-        cy.on("tap", (evt) => { if (evt.target === cy) handlers.onBackground(); });
-      }
+      cy.on("tap", (evt) => { if (evt.target === cy && handlers && handlers.onBackground) handlers.onBackground(); });
     }
 
     function computeNorms(model, sys, sol, params) {
@@ -178,7 +188,15 @@
     }
     function fit() { cy.resize(); cy.fit(undefined, 28); }
 
-    return { cy, render, frame, computeNorms, highlight, clearHighlight, positions, relayout, fit };
+    // Connect mode: nodes are not grabbable and panning is off, so a drag is
+    // read as a connection rather than a move.
+    function setConnectMode(on) { cy.autoungrabify(!!on); cy.userPanningEnabled(!on); }
+    function onConnect(handlers) {
+      cy.on("tapstart", "node", (evt) => { if (handlers.start) handlers.start(evt.target.id()); });
+      cy.on("tapend", "node", (evt) => { if (handlers.end) handlers.end(evt.target.id()); });
+    }
+
+    return { cy, render, onTap, onConnect, setConnectMode, frame, computeNorms, highlight, clearHighlight, positions, relayout, fit };
   }
 
   NS.createDiagram = createDiagram;

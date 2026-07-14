@@ -3,7 +3,7 @@
   "use strict";
   const NS = root.BPS || (root.BPS = {});
 
-  const SCHEMA_VERSION = "1.2";
+  const SCHEMA_VERSION = "1.3";
   const MAX_SPECIES = 20;
   const MAX_REACTIONS = 25;
   const RATE_LAWS = ["constant", "mass_action", "michaelis_menten", "hill"];
@@ -152,6 +152,18 @@
     const sim = model.simulation || {};
     if (sim.tEnd !== undefined && (!isNumber(sim.tEnd) || sim.tEnd <= 0))
       fail("simulation.tEnd must be positive");
+
+    // Optional diagram node positions. Purely presentational: the engine ignores
+    // it and it has no effect on the numerics.
+    if (model.layout !== undefined) {
+      if (typeof model.layout !== "object" || model.layout === null || Array.isArray(model.layout))
+        fail("layout must be an object");
+      for (const k in model.layout) {
+        const p = model.layout[k];
+        if (!p || typeof p !== "object" || !isNumber(p.x) || !isNumber(p.y))
+          fail("layout['" + k + "'] must have numeric x and y");
+      }
+    }
 
     return model;
   }

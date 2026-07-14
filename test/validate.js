@@ -134,11 +134,11 @@ const mapkModel = loadModel("mapk.json");
 const gkModel = loadModel("goldbeter-koshland.json");
 validateModel(mapkModel);
 validateModel(gkModel);
-console.log("both models pass schema validation (v1.2)");
+console.log("both models pass schema validation (v1.3)");
 
 let badCaught = false;
 try {
-  validateModel({ schemaVersion: "1.2", id: "x", name: "x", species: [{ id: "A", initial: 1 }],
+  validateModel({ schemaVersion: "1.3", id: "x", name: "x", species: [{ id: "A", initial: 1 }],
     parameters: [], reactions: [{ id: "r", reactants: {}, products: {},
       rateLaw: { type: "mass_action", k: "missing" } }] });
 } catch (e) { badCaught = true; }

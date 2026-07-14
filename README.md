@@ -57,14 +57,14 @@ editable.
   modification in biological systems. Proc Natl Acad Sci USA 1981;78:6840-6844.
   doi:10.1073/pnas.78.11.6840
 
-## Model specification (v1.2)
+## Model specification (v1.3)
 
 A model is a single JSON object. Model files are pure data and contain no code.
 The overall shape is:
 
 ```json
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "id": "example",
   "name": "Example model",
   "citation": { "text": "Author. Title. Journal Year;Vol:Pages.", "doi": "10.xxxx/xxxxx" },
@@ -72,12 +72,18 @@ The overall shape is:
   "species":    [ ... ],
   "parameters": [ ... ],
   "reactions":  [ ... ],
-  "simulation": { "tEnd": 100, "rtol": 1e-6, "atol": 1e-9 }
+  "simulation": { "tEnd": 100, "rtol": 1e-6, "atol": 1e-9 },
+  "layout": { "s:A": { "x": 0, "y": 0 }, "r:v1": { "x": 60, "y": 40 } }
 }
 ```
 
-`schemaVersion` must be exactly `"1.2"`. `citation` is optional. `units` values
+`schemaVersion` must be exactly `"1.3"`. `citation` is optional. `units` values
 are labels used on the axes and are not interpreted numerically.
+
+`layout` is optional and holds saved diagram node positions keyed by node id
+(`s:` prefix for a species, `r:` for a reaction, `d:` for a drug/dose node). It
+is purely presentational: the engine, and any future reader, must ignore it, as
+it has no effect on the numerics.
 
 ### Species
 

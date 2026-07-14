@@ -4,7 +4,7 @@
   const NS = root.BPS || (root.BPS = {});
   NS.models = [
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "id": "mapk",
   "name": "MAPK/ERK cascade with negative feedback",
   "citation": {
@@ -461,7 +461,7 @@
   }
 },
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "id": "goldbeter-koshland",
   "name": "Zero-order ultrasensitivity switch",
   "citation": {

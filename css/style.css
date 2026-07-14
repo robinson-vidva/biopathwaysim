@@ -346,3 +346,34 @@ input[type="range"]:focus::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(8,1
   .side { margin: 0 12px 12px; }
   .cy { height: 420px; }
 }
+
+/* --- Phase 6b: diagram editing --- */
+.diagram-panel { position: relative; }
+.edit-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--bg-2);
+}
+.edit-toolbar select {
+  font-family: var(--sans); font-size: 12px; color: var(--slate);
+  background: var(--bg); border: 1px solid var(--line-2); border-radius: 3px; padding: 3px 6px;
+}
+.ce-mode-label { font-size: 11px; color: var(--slate-3); display: flex; gap: 6px; align-items: center; }
+.ce-hint { font-size: 11px; color: var(--slate-3); }
+.ce-error { font-size: 11px; color: #be123c; }
+.mini-btn.active { background: var(--teal); color: #fff; border-color: var(--teal-dark); }
+
+.diagram-edit {
+  position: absolute; top: 92px; right: 10px; width: 264px;
+  max-height: calc(100% - 110px); overflow-y: auto;
+  background: var(--bg); border: 1px solid var(--line-2); border-radius: 4px;
+  padding: 10px 12px; z-index: 5;
+}
+.diagram-edit .de-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.diagram-edit h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--slate-3); }
+.diagram-edit .b-field { margin: 6px 0; }
+.diagram-edit .b-field input[type="text"], .diagram-edit .b-field input[type="number"] { width: 100%; }
+.diagram-edit .b-field select { width: 100%; }
+.diagram-edit .de-params { margin: 6px 0; }
+.diagram-edit .de-stoich, .diagram-edit .de-mods { margin: 8px 0; }
+.diagram-edit .b-stoich-row select { width: auto; }
+.de-del { margin-top: 10px; width: 100%; }

@@ -27,6 +27,14 @@
   const cyTimeLabel = document.getElementById("cy-time-label");
   const cyFit = document.getElementById("cy-fit");
   const cyRelayout = document.getElementById("cy-relayout");
+  const cyEdit = document.getElementById("cy-edit");
+  const editToolbar = document.getElementById("edit-toolbar");
+  const ceAddSpecies = document.getElementById("ce-add-species");
+  const ceAddReaction = document.getElementById("ce-add-reaction");
+  const ceMode = document.getElementById("ce-mode");
+  const ceHint = document.getElementById("ce-hint");
+  const ceError = document.getElementById("ce-error");
+  const diagramEditEl = document.getElementById("diagram-edit");
 
   const NONMONOTONE_NOTE = "Low-dose inhibition can transiently increase downstream output by " +
     "relieving negative feedback. This is a property of the network, not a numerical artifact.";
@@ -39,6 +47,7 @@
   let playing = true, seekFrac = 0, playWall0 = null;
   const PLAY_MS = 14000;
   let lastDose = null;
+  let editMode = false, dragMode = "move", connectSource = null, selectedNodeId = null;
 
   const READOUT_AXIS = {
     mean: "time-averaged mean", final: "final value",
@@ -135,16 +144,17 @@
     });
   }
 
-  function renderDiagramIfChanged(force) {
+  function renderDiagramIfChanged(preserve) {
     if (!diagram) return;
     const sig = structureSig(model);
-    if (!force && sig === diagramSig) return;
+    if (sig === diagramSig) return;
     diagramSig = sig;
-    diagram.render(model, model.layout, {
-      onSpecies: (id) => selectFromDiagram("species", id),
-      onReaction: (id) => selectFromDiagram("reaction", id),
-      onBackground: () => { diagram.clearHighlight(); clearEqHighlight(); },
-    });
+    diagram.render(model, model.layout, { preserve: !!preserve });
+    updateInteraction();
+  }
+
+  function updateInteraction() {
+    if (diagram) diagram.setConnectMode(editMode && dragMode !== "move");
   }
 
   function fmtTime(t) {
@@ -313,6 +323,7 @@
     model = clone(currentSpec);
     initSweepCfg();
     lastDose = null;
+    closePanel();
     NS.renderCitation(citationEl, model);
     refreshBuilder();
 
@@ -334,7 +345,7 @@
       doseCaptionEl.textContent = "";
       doseNoteEl.textContent = ""; doseNoteEl.hidden = true;
       runNoteEl.textContent = "model invalid — not simulated";
-      diagramSig = ""; renderDiagramIfChanged(true);
+      diagramSig = ""; renderDiagramIfChanged(false);
     } else {
       sys = NS.buildModel(model);
       params = Object.assign({}, sys.defaultParams);
@@ -343,7 +354,7 @@
       ctx = { params, visible, sys, run: scheduleRun, redraw: scheduleDraw, reset: activate };
       NS.buildControls(controlsEl, model, ctx);
       NS.buildSweepControls(sweepControlsEl, model, sweepCfg);
-      diagramSig = ""; renderDiagramIfChanged(true);
+      diagramSig = ""; renderDiagramIfChanged(false);
       integrateAndDraw();
       runSweep();
     }
@@ -357,9 +368,11 @@
 
   function scheduleLiveUpdate() { clearTimeout(liveTimer); liveTimer = setTimeout(liveUpdate, 80); }
 
-  function applyEdit() {
+  // Shared commit for every edit path (form builder or diagram). Re-renders the
+  // equations and the diagram, validates, and simulates only if valid.
+  function commitModel() {
     NS.renderEquations(equationsEl, model, eqParamsFor(model));
-    renderDiagramIfChanged(false);
+    renderDiagramIfChanged(true);
     let err = null;
     try { NS.validateModel(model); } catch (e) { err = e.message; }
     if (err) {
@@ -370,6 +383,51 @@
     }
     scheduleLiveUpdate();
     return null;
+  }
+
+  // Used by the form builder (does not refresh itself, to keep input focus).
+  function applyEdit() { return commitModel(); }
+
+  // Used by diagram gestures: commit, then refresh the form builder to stay in sync.
+  function onDiagramMutated() {
+    const err = commitModel();
+    refreshBuilder();
+    showEditError(err || "");
+    return err;
+  }
+
+  function showEditError(msg) { ceError.textContent = msg || ""; }
+
+  function setHint() {
+    if (!editMode) { ceHint.textContent = ""; return; }
+    ceHint.textContent = dragMode === "move" ? "Click a node to edit it; drag to reposition."
+      : dragMode === "substrate" ? "Drag species to reaction (reactant) or reaction to species (product)."
+      : dragMode === "enzyme" ? "Drag a species onto a reaction to set its enzyme."
+      : "Drag a species onto a reaction to add an inhibitor.";
+  }
+
+  function openPanel(nodeId) {
+    selectedNodeId = nodeId;
+    NS.renderNodePanel(diagramEditEl, model, nodeId, onDiagramMutated, closePanel);
+    diagramEditEl.hidden = false;
+  }
+  function closePanel() { selectedNodeId = null; diagramEditEl.hidden = true; if (diagram) diagram.clearHighlight(); }
+
+  function doConnect(src, tgt) {
+    const r = NS.diagramConnect(model, src, tgt, dragMode);
+    if (!r.ok) { showEditError(r.error); return; }
+    showEditError("");
+    onDiagramMutated();
+  }
+
+  function toggleEdit() {
+    editMode = !editMode;
+    editToolbar.hidden = !editMode;
+    cyEdit.classList.toggle("active", editMode);
+    cyEdit.textContent = editMode ? "Done editing" : "Edit diagram";
+    if (!editMode) { closePanel(); showEditError(""); }
+    updateInteraction();
+    setHint();
   }
 
   function liveUpdate() {
@@ -401,6 +459,11 @@
   }
 
   function exportModel() {
+    // Persist current node positions (schemaVersion 1.3); the engine ignores them.
+    if (diagram && (model.species.length + model.reactions.length) > 0) {
+      const pos = diagram.positions();
+      if (Object.keys(pos).length) model.layout = pos;
+    }
     download((model.id || "model") + ".json", JSON.stringify(model, null, 2), "application/json");
   }
 
@@ -452,6 +515,23 @@
   function boot() {
     initTabs();
     diagram = NS.createDiagram ? NS.createDiagram(cyEl) : null;
+    if (diagram) {
+      diagram.onTap({
+        onNode: (nodeId, kind, label) => {
+          if (editMode) { openPanel(nodeId); return; }
+          if (kind === "species") selectFromDiagram("species", label);
+          else if (kind === "reaction") selectFromDiagram("reaction", label);
+        },
+        onBackground: () => { if (!editMode) { diagram.clearHighlight(); clearEqHighlight(); } else closePanel(); },
+      });
+      diagram.onConnect({
+        start: (id) => { if (editMode && dragMode !== "move") connectSource = id; },
+        end: (id) => {
+          if (editMode && dragMode !== "move" && connectSource && id !== connectSource) doConnect(connectSource, id);
+          connectSource = null;
+        },
+      });
+    }
     specs = (NS.models || []).slice();
     if (!specs.length) {
       controlsEl.textContent = "No models are bundled. Run scripts/build-models.js to generate js/models/models.js.";
@@ -498,6 +578,19 @@
   cyTime.addEventListener("input", () => { setPlaying(false); seekFrac = Number(cyTime.value) / 1000; });
   cyFit.addEventListener("click", () => { if (diagram) diagram.fit(); });
   cyRelayout.addEventListener("click", () => { if (diagram) { diagram.relayout(); } });
+
+  cyEdit.addEventListener("click", toggleEdit);
+  ceAddSpecies.addEventListener("click", () => {
+    const r = NS.diagramAddSpecies(model);
+    if (!r.ok) { showEditError(r.error); return; }
+    showEditError(""); onDiagramMutated(); openPanel(r.id);
+  });
+  ceAddReaction.addEventListener("click", () => {
+    const r = NS.diagramAddReaction(model);
+    if (!r.ok) { showEditError(r.error); return; }
+    showEditError(""); onDiagramMutated(); openPanel(r.id);
+  });
+  ceMode.addEventListener("change", () => { dragMode = ceMode.value; updateInteraction(); setHint(); showEditError(""); });
 
   window.addEventListener("resize", () => { scheduleDraw(); if (diagram) diagram.fit(); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
