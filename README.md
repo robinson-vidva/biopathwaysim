@@ -184,10 +184,12 @@ modulator; the MEK and kinase inhibitors are parameter-sourced (dose) modulators
 ## Persistence
 
 A model can be exported to a `.json` file (the canonical spec, including
-`schemaVersion`) and re-imported through a file picker. Import refuses a file
-whose `schemaVersion` is not `1.2` and validates the model before loading.
-Plotted trajectories can be exported to CSV (a time column and one column per
-plotted species).
+`schemaVersion`) and re-imported through a file picker. On import, a model with
+an older `schemaVersion` (1.0, 1.1, or 1.2) is migrated forward to the current
+version before it is validated, so saved models keep working across schema
+bumps; only a version newer than the tool, or an unrecognized one, is refused,
+with a clear message. Plotted trajectories can be exported to CSV (a time column
+and one column per plotted species).
 
 ## Numerical method
 

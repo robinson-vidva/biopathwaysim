@@ -483,20 +483,17 @@
   function importModel(text) {
     let obj;
     try { obj = JSON.parse(text); } catch (e) { window.alert("Import failed: the file is not valid JSON."); return; }
-    if (!obj || typeof obj !== "object" || obj.schemaVersion !== NS.SCHEMA_VERSION) {
-      window.alert("Import refused: this file declares schemaVersion '" +
-        (obj && obj.schemaVersion) + "'. BioPathwaySim supports " + NS.SCHEMA_VERSION +
-        ". Convert the model, or export it from this version of the tool.");
-      return;
-    }
-    try { NS.validateModel(obj); } catch (e) { window.alert("Import refused: " + e.message); return; }
-    specs.push(obj);
+    const mig = NS.migrate(obj);
+    if (!mig.ok) { window.alert("Import refused: " + mig.error); return; }
+    const m = mig.model;
+    try { NS.validateModel(m); } catch (e) { window.alert("Import refused: " + e.message); return; }
+    specs.push(m);
     const o = document.createElement("option");
     o.value = String(specs.length - 1);
-    o.textContent = (obj.name || obj.id) + " (imported)";
+    o.textContent = (m.name || m.id) + (mig.migratedFrom ? " (imported, migrated from " + mig.migratedFrom + ")" : " (imported)");
     picker.appendChild(o);
     picker.value = String(specs.length - 1);
-    currentSpec = obj;
+    currentSpec = m;
     activate();
   }
 
