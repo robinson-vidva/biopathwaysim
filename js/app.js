@@ -12,7 +12,11 @@
   const dosePlot = document.getElementById("dose-plot");
   const sweepControlsEl = document.getElementById("sweep-controls");
   const doseCaptionEl = document.getElementById("dose-caption");
+  const doseNoteEl = document.getElementById("dose-note");
   const sweepRunBtn = document.getElementById("sweep-run");
+
+  const NONMONOTONE_NOTE = "Low-dose inhibition can transiently increase downstream output by " +
+    "relieving negative feedback. This is a property of the network, not a numerical artifact.";
   const builderEl = document.getElementById("builder");
   const builderBodyEl = document.getElementById("builder-body");
   const builderStatusEl = document.getElementById("builder-status");
@@ -134,6 +138,15 @@
           " steady state; those points report a time-averaged mean over the final portion of each run.";
       }
       doseCaptionEl.textContent = cap;
+
+      if (risesBeforeFalls(pts.map((p) => p.y))) {
+        doseNoteEl.textContent = NONMONOTONE_NOTE;
+        doseNoteEl.hidden = false;
+      } else {
+        doseNoteEl.textContent = "";
+        doseNoteEl.hidden = true;
+      }
+
       sweepRunBtn.disabled = false;
       sweepRunBtn.textContent = "Run sweep";
     }, 0);
@@ -150,6 +163,23 @@
       nPoints: doseParam ? 40 : 25,
       spacing: doseParam ? "log" : (sweepParam ? (sweepParam.scale || "linear") : "linear"),
     };
+  }
+
+  // A curve "rises before it falls" when its greatest value is at an interior
+  // point, meaningfully above both ends. Detected from the data, not the model.
+  function risesBeforeFalls(ys) {
+    const v = ys.filter((y) => isFinite(y));
+    if (v.length < 3) return false;
+    let lo = v[0], hi = v[0], maxIdx = 0;
+    for (let i = 0; i < v.length; i++) {
+      if (v[i] < lo) lo = v[i];
+      if (v[i] > hi) { hi = v[i]; maxIdx = i; }
+    }
+    const range = hi - lo;
+    if (range <= 0) return false;
+    const tol = 0.01 * range;
+    return maxIdx > 0 && maxIdx < v.length - 1 &&
+      v[maxIdx] - v[0] > tol && v[maxIdx] - v[v.length - 1] > tol;
   }
 
   function reconcileSweepCfg() {
@@ -187,6 +217,8 @@
       clearCanvas(plotCanvas);
       clearCanvas(dosePlot);
       doseCaptionEl.textContent = "";
+      doseNoteEl.textContent = "";
+      doseNoteEl.hidden = true;
       runNoteEl.textContent = "model invalid — not simulated";
     } else {
       sys = NS.buildModel(model);

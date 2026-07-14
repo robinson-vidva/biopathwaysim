@@ -1,0 +1,16 @@
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+*~
+.idea/
+.vscode/
+
+# Node (the engine and tests run under Node; the project itself has no dependencies)
+node_modules/
+npm-debug.log*
+
+# Scratch and temporary working files
+_*.html
+*.tmp
+*.log
+scratch/
