@@ -21,12 +21,20 @@ The engine is also usable from Node. The validation gate is run with
 The pathway diagram is the primary view. Species are drawn as round nodes,
 reactions as square nodes, and drug doses as hexagon nodes; a reaction is never
 an edge, so a reaction with several reactants, products, an enzyme, and
-modulators is represented faithfully. During a simulation, node fill intensity
-tracks the current concentration and edge width tracks the current reaction
-flux, so a cascade can be watched oscillating through the diagram. Clicking a
-species or reaction node highlights its line in the equations panel. The right
+modulators is represented faithfully. Node fill intensity tracks the current
+concentration and edge width tracks the current reaction flux. Clicking a
+species or reaction node highlights its line in the equations panel; hovering a
+node or edge reads out its concentration or flux at the current time. The right
 pane is tabbed (Controls, Equations, Build) and the plots below are tabbed
 (Time course, Dose-response).
+
+The trajectory is integrated once, up front; a transport bar (play, pause, step,
+reset, a speed control, an adjustable step, and a scrubbable time slider) plays
+back over the stored result. A single time cursor is shared across the diagram,
+the time course, and the equations: as time advances the time course is drawn
+progressively and the diagram's node intensities and edge widths update in
+lockstep, so the activation wave can be watched moving through the network while
+the trace is drawn beneath it. Scrubbing the cursor moves all three together.
 
 ## Vendored dependencies
 

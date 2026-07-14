@@ -22,11 +22,18 @@
   const btnExport = document.getElementById("btn-export");
   const btnExportCsv = document.getElementById("btn-export-csv");
   const cyEl = document.getElementById("cy");
-  const cyPlay = document.getElementById("cy-play");
-  const cyTime = document.getElementById("cy-time");
-  const cyTimeLabel = document.getElementById("cy-time-label");
   const cyFit = document.getElementById("cy-fit");
   const cyRelayout = document.getElementById("cy-relayout");
+  const tpPlay = document.getElementById("tp-play");
+  const tpStep = document.getElementById("tp-step");
+  const tpReset = document.getElementById("tp-reset");
+  const tpSpeed = document.getElementById("tp-speed");
+  const tpStride = document.getElementById("tp-stride");
+  const tpStrideUnit = document.getElementById("tp-stride-unit");
+  const tpTime = document.getElementById("tp-time");
+  const tpClock = document.getElementById("tp-clock");
+  const cyTip = document.getElementById("cy-tip");
+  const emptyStateEl = document.getElementById("empty-state");
   const cyEdit = document.getElementById("cy-edit");
   const editToolbar = document.getElementById("edit-toolbar");
   const ceAddSpecies = document.getElementById("ce-add-species");
@@ -44,10 +51,14 @@
   let lastSol = null, norms = null;
   let runTimer = null, drawTimer = null, liveTimer = null;
   let diagram = null, diagramSig = "";
-  let playing = true, seekFrac = 0, playWall0 = null;
-  const PLAY_MS = 14000;
   let lastDose = null;
   let editMode = false, dragMode = "move", connectSource = null, selectedNodeId = null;
+
+  // Shared time cursor (fraction 0..1 of the stored trajectory).
+  let cursorFrac = 0, playing = true, speed = 1, stride = 1, dirty = true, lastWall = null;
+  const BASE_MS = 12000;                 // wall time for the full trajectory at 1x
+  let plotsTab = "timecourse", sideTab = "controls";
+  let hovered = null;
 
   const READOUT_AXIS = {
     mean: "time-averaged mean", final: "final value",
@@ -73,12 +84,14 @@
     if (!group) return;
     group.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.getAttribute("data-tab") === tabName));
     group.querySelectorAll(".tabpanel").forEach((p) => p.classList.toggle("active", p.getAttribute("data-panel") === tabName));
+    if (groupName === "plots") plotsTab = tabName;
+    if (groupName === "side") sideTab = tabName;
     onTabShown(tabName);
   }
 
   function onTabShown(name) {
-    if (name === "timecourse") scheduleDraw();
     if (name === "dose") drawDose();
+    dirty = true;   // let the cursor loop repaint the newly shown time course / equations
   }
 
   function initTabs() {
@@ -103,14 +116,16 @@
     c.clearRect(0, 0, cv.width, cv.height);
   }
 
-  function draw() {
+  function tEndOf() { return (model.simulation && model.simulation.tEnd) || 100; }
+
+  function drawTimeCourse(cursorT) {
     if (!lastSol || !sys) return;
     NS.drawPlot(plotCanvas, lastSol, currentSeries(), {
       yUnit: model.units ? model.units.concentration : "",
       tUnit: model.units ? model.units.time : "s",
+      cursorT: cursorT,
     });
   }
-
   function integrateAndDraw() {
     if (!sys) return;
     const sim = model.simulation || {};
@@ -121,13 +136,13 @@
     });
     const ms = performance.now() - t0;
     if (diagram) norms = diagram.computeNorms(model, sys, lastSol, params);
-    draw();
     NS.renderEquations(equationsEl, model, params);
     runNoteEl.textContent = lastSol.t.length + " steps, " + ms.toFixed(0) + " ms" + (ms > 200 ? " (slow)" : "");
+    dirty = true;   // the cursor loop redraws diagram + progressive time course
   }
 
   function scheduleRun() { clearTimeout(runTimer); runTimer = setTimeout(integrateAndDraw, 50); }
-  function scheduleDraw() { clearTimeout(drawTimer); drawTimer = setTimeout(draw, 50); }
+  function scheduleDraw() { clearTimeout(drawTimer); drawTimer = setTimeout(() => { dirty = true; }, 50); }
 
   // --- diagram + playback --------------------------------------------------
 
@@ -157,25 +172,85 @@
     if (diagram) diagram.setConnectMode(editMode && dragMode !== "move");
   }
 
-  function fmtTime(t) {
-    const u = model.units ? model.units.time : "s";
-    return (t >= 100 ? Math.round(t) : Math.round(t * 100) / 100) + " " + u;
+  function fmtNum(x) {
+    if (typeof x !== "number" || !isFinite(x)) return String(x);
+    if (x === 0) return "0";
+    const a = Math.abs(x);
+    if (a >= 1e4 || a < 1e-3) return x.toExponential(2);
+    let s = x.toPrecision(4);
+    if (s.indexOf(".") >= 0) s = s.replace(/0+$/, "").replace(/\.$/, "");
+    return s;
+  }
+  function fmtTime(t) { const u = model.units ? model.units.time : "s"; return fmtNum(Math.round(t * 100) / 100) + " " + u; }
+
+  // The single place the shared cursor drives everything: diagram, time course,
+  // equations, transport readout, and the hover tooltip. No re-integration here.
+  function renderCursor() {
+    if (!lastSol || !sys) return;
+    const tEnd = lastSol.t[lastSol.t.length - 1] || 1;
+    const t = cursorFrac * tEnd;
+    const y = interpState(lastSol, t);
+    if (diagram && norms) diagram.frame(model, sys, y, params, norms);
+    if (plotsTab === "timecourse") drawTimeCourse(t);
+    if (sideTab === "equations") NS.updateEquationValues(equationsEl, model, sys, y, params);
+    tpTime.value = Math.round(cursorFrac * 1000);
+    tpClock.textContent = "t = " + fmtTime(t);
+    updateTip(y);
   }
 
   function playbackTick(nowMs) {
     requestAnimationFrame(playbackTick);
-    if (!diagram || !lastSol || !sys || !norms) return;
-    const tEnd = lastSol.t[lastSol.t.length - 1] || 1;
+    const dt = lastWall == null ? 0 : nowMs - lastWall;
+    lastWall = nowMs;
+    if (!lastSol || !sys) return;
     if (playing) {
-      if (playWall0 == null) playWall0 = nowMs - seekFrac * PLAY_MS;
-      let f = ((nowMs - playWall0) / PLAY_MS) % 1;
-      if (f < 0) f += 1;
-      seekFrac = f;
-      cyTime.value = Math.round(seekFrac * 1000);
+      cursorFrac += (speed * dt) / BASE_MS;
+      cursorFrac -= Math.floor(cursorFrac);   // wrap into [0,1)
+      dirty = true;
     }
-    const t = seekFrac * tEnd;
-    diagram.frame(model, sys, interpState(lastSol, t), params, norms);
-    cyTimeLabel.textContent = fmtTime(t);
+    if (!dirty) return;
+    dirty = false;
+    renderCursor();
+  }
+
+  function setPlaying(p) {
+    playing = p;
+    tpPlay.textContent = playing ? "Pause" : "Play";
+    tpPlay.classList.toggle("playing", playing);
+    dirty = true;
+  }
+  function stepCursor(dir) {
+    setPlaying(false);
+    const frac = stride / tEndOf();
+    cursorFrac = Math.max(0, Math.min(1, cursorFrac + dir * frac));
+    dirty = true;
+  }
+  function resetCursor() { cursorFrac = 0; dirty = true; }
+
+  function updateTip(y) {
+    if (!hovered || !sys || !y) { cyTip.hidden = true; return; }
+    const cU = model.units ? model.units.concentration : "";
+    const tU = model.units ? model.units.time : "s";
+    let text = "";
+    if (hovered.type === "edge") {
+      const r = model.reactions.find((x) => x.id === hovered.rxn);
+      const rate = r ? NS.reactionRate(r, y, sys.idx, params) : NaN;
+      text = "flux(" + hovered.rxn + ") = " + fmtNum(rate) + (cU ? " " + cU + "/" + tU : "");
+    } else if (hovered.kind === "species") {
+      const raw = hovered.id.slice(2);
+      text = raw + " = " + fmtNum(y[sys.idx[raw]]) + (cU ? " " + cU : "");
+    } else if (hovered.kind === "reaction") {
+      const raw = hovered.id.slice(2);
+      const r = model.reactions.find((x) => x.id === raw);
+      const rate = r ? NS.reactionRate(r, y, sys.idx, params) : NaN;
+      text = "flux(" + raw + ") = " + fmtNum(rate) + (cU ? " " + cU + "/" + tU : "");
+    } else if (hovered.kind === "drug") {
+      const pid = hovered.id.slice(2);
+      text = pid + " = " + fmtNum(params[pid]) + (cU ? " " + cU : "");
+    }
+    cyTip.textContent = text;
+    if (hovered.pos) { cyTip.style.left = hovered.pos.x + "px"; cyTip.style.top = hovered.pos.y + "px"; }
+    cyTip.hidden = false;
   }
 
   function interpState(sol, t) {
@@ -188,12 +263,6 @@
     const ya = sol.y[lo], yb = sol.y[hi], out = new Array(ya.length);
     for (let i = 0; i < ya.length; i++) out[i] = ya[i] + (yb[i] - ya[i]) * f;
     return out;
-  }
-
-  function setPlaying(p) {
-    playing = p;
-    playWall0 = null;
-    cyPlay.textContent = playing ? "Pause" : "Play";
   }
 
   // --- diagram <-> equations selection -------------------------------------
@@ -319,10 +388,21 @@
 
   // --- activate ------------------------------------------------------------
 
+  function updateEmptyState() {
+    const empty = model.species.length === 0;
+    emptyStateEl.hidden = !empty;
+    if (empty) cyTip.hidden = true;
+    return empty;
+  }
+
   function activate() {
     model = clone(currentSpec);
     initSweepCfg();
     lastDose = null;
+    cursorFrac = 0;
+    stride = tEndOf() / 200;
+    tpStride.value = Math.round(stride * 1000) / 1000;
+    tpStrideUnit.textContent = model.units ? model.units.time : "s";
     closePanel();
     NS.renderCitation(citationEl, model);
     refreshBuilder();
@@ -344,8 +424,9 @@
       clearCanvas(dosePlot);
       doseCaptionEl.textContent = "";
       doseNoteEl.textContent = ""; doseNoteEl.hidden = true;
-      runNoteEl.textContent = "model invalid — not simulated";
       diagramSig = ""; renderDiagramIfChanged(false);
+      // A blank model gets an instruction, not an error.
+      runNoteEl.textContent = updateEmptyState() ? "" : "model invalid — not simulated";
     } else {
       sys = NS.buildModel(model);
       params = Object.assign({}, sys.defaultParams);
@@ -355,6 +436,7 @@
       NS.buildControls(controlsEl, model, ctx);
       NS.buildSweepControls(sweepControlsEl, model, sweepCfg);
       diagramSig = ""; renderDiagramIfChanged(false);
+      updateEmptyState();
       integrateAndDraw();
       runSweep();
     }
@@ -373,12 +455,13 @@
   function commitModel() {
     NS.renderEquations(equationsEl, model, eqParamsFor(model));
     renderDiagramIfChanged(true);
+    const empty = updateEmptyState();
     let err = null;
     try { NS.validateModel(model); } catch (e) { err = e.message; }
     if (err) {
       clearTimeout(liveTimer);
       sys = null; norms = null;
-      runNoteEl.textContent = "model invalid — not simulated";
+      runNoteEl.textContent = empty ? "" : "model invalid — not simulated";
       return err;
     }
     scheduleLiveUpdate();
@@ -528,6 +611,14 @@
           connectSource = null;
         },
       });
+      // Hover readouts at the current cursor time.
+      const cy = diagram.cy;
+      cy.on("mouseover", "node", (evt) => { hovered = { type: "node", id: evt.target.id(), kind: evt.target.data("kind"), pos: evt.renderedPosition }; dirty = true; });
+      cy.on("mouseover", "edge", (evt) => { hovered = { type: "edge", rxn: evt.target.data("rxn"), pos: evt.renderedPosition }; dirty = true; });
+      cy.on("mousemove", "node", (evt) => { if (hovered) { hovered.pos = evt.renderedPosition; dirty = true; } });
+      cy.on("mousemove", "edge", (evt) => { if (hovered) { hovered.pos = evt.renderedPosition; dirty = true; } });
+      cy.on("mouseout", "node", () => { hovered = null; cyTip.hidden = true; });
+      cy.on("mouseout", "edge", () => { hovered = null; cyTip.hidden = true; });
     }
     specs = (NS.models || []).slice();
     if (!specs.length) {
@@ -543,6 +634,7 @@
     picker.addEventListener("change", () => { currentSpec = specs[Number(picker.value)]; activate(); });
     currentSpec = specs[0];
     activate();
+    setPlaying(true);
     requestAnimationFrame(playbackTick);
   }
 
@@ -571,8 +663,12 @@
   btnExportCsv.addEventListener("click", exportCsv);
   sweepRunBtn.addEventListener("click", runSweep);
 
-  cyPlay.addEventListener("click", () => setPlaying(!playing));
-  cyTime.addEventListener("input", () => { setPlaying(false); seekFrac = Number(cyTime.value) / 1000; });
+  tpPlay.addEventListener("click", () => setPlaying(!playing));
+  tpStep.addEventListener("click", () => stepCursor(1));
+  tpReset.addEventListener("click", resetCursor);
+  tpSpeed.addEventListener("change", () => { speed = Number(tpSpeed.value) || 1; });
+  tpStride.addEventListener("input", () => { const v = Number(tpStride.value); stride = v > 0 ? v : stride; });
+  tpTime.addEventListener("input", () => { setPlaying(false); cursorFrac = Number(tpTime.value) / 1000; dirty = true; });
   cyFit.addEventListener("click", () => { if (diagram) diagram.fit(); });
   cyRelayout.addEventListener("click", () => { if (diagram) { diagram.relayout(); } });
 

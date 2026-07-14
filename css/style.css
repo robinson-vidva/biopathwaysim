@@ -377,3 +377,95 @@ input[type="range"]:focus::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(8,1
 .diagram-edit .de-stoich, .diagram-edit .de-mods { margin: 8px 0; }
 .diagram-edit .b-stoich-row select { width: auto; }
 .de-del { margin-top: 10px; width: 100%; }
+
+/* ============================================================= */
+/* Phase 7: scientific-instrument restyle (hairline, dense, flat) */
+/* ============================================================= */
+body { font-size: 14px; }
+
+/* Flatten: no rounded cards, hairline rules only, no shadows. */
+.panel { border-radius: 0; }
+.diagram-panel, .side, .plots { margin: 12px; }
+.diagram-panel { margin-right: 6px; }
+.side { margin-left: 6px; }
+.layout { grid-template-columns: 1fr 380px; }
+
+.site-header { padding: 16px 20px 12px; }
+.site-header h1 { font-size: 20px; }
+.subtitle { font-size: 13px; }
+.toolbar { padding: 8px 20px; }
+.citation { padding: 10px 20px; }
+.panel-head { padding: 9px 12px; }
+.panel-head h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate-2); }
+
+/* Teal reserved for live / active state only: neutral action buttons. */
+.btn-run {
+  background: var(--bg); color: var(--slate); border: 1px solid var(--line-2); border-radius: 2px;
+}
+.btn-run:hover { border-color: var(--slate-3); background: var(--bg-2); }
+.btn-run:disabled { color: var(--slate-3); }
+.tb-btn, .mini-btn, .b-add, .b-add-sm, .b-remove, .b-remove-sm, .btn-reset { border-radius: 2px; }
+
+/* Transport bar */
+.transport {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--bg-2);
+}
+.tp-btn {
+  font-family: var(--sans); font-size: 12px; color: var(--slate);
+  background: var(--bg); border: 1px solid var(--line-2); border-radius: 2px;
+  padding: 3px 11px; cursor: pointer; min-width: 52px;
+}
+.tp-btn:hover { border-color: var(--slate-3); }
+.tp-btn.playing { background: var(--teal); color: #fff; border-color: var(--teal-dark); }
+.tp-sep { width: 1px; align-self: stretch; background: var(--line-2); margin: 0 2px; }
+.tp-field { font-size: 11px; color: var(--slate-3); display: flex; align-items: center; gap: 5px; }
+.tp-field select, .tp-field input {
+  font-family: var(--mono); font-size: 12px; color: var(--slate);
+  background: var(--bg); border: 1px solid var(--line-2); border-radius: 2px; padding: 2px 5px;
+}
+.tp-field input[type="number"] { width: 74px; }
+.tp-unit { font-family: var(--mono); font-size: 11px; color: var(--slate-3); }
+.tp-scrub { flex: 1; margin: 0; min-width: 90px; }
+.tp-clock {
+  font-family: var(--mono); font-size: 12.5px; color: var(--teal-dark);
+  min-width: 96px; text-align: right; white-space: nowrap;
+}
+
+/* Graph-paper substrate behind the diagram (Cytoscape canvas is transparent). */
+.cy-wrap { position: relative; }
+.cy {
+  background-color: #fcfcfd;
+  background-image:
+    linear-gradient(to right, #eef1f5 1px, transparent 1px),
+    linear-gradient(to bottom, #eef1f5 1px, transparent 1px),
+    linear-gradient(to right, #f5f7f9 1px, transparent 1px),
+    linear-gradient(to bottom, #f5f7f9 1px, transparent 1px);
+  background-size: 88px 88px, 88px 88px, 22px 22px, 22px 22px;
+}
+
+/* Hover readout tooltip */
+.cy-tip {
+  position: absolute; z-index: 8; pointer-events: none;
+  font-family: var(--mono); font-size: 11.5px; color: #f8fafc;
+  background: var(--slate); border: 1px solid #0f172a; padding: 3px 7px;
+  white-space: nowrap; transform: translate(-50%, -140%);
+}
+
+/* Empty state (blank model): an instruction, not an error */
+.empty-state {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+  background: rgba(252, 252, 253, 0.9); text-align: center; padding: 20px;
+}
+.es-title { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate-3); }
+.es-body { margin: 0; font-size: 14px; color: var(--slate-2); max-width: 38ch; }
+
+/* Equations: live cursor readout per line, teal because it is live state */
+.eq-cursor { float: right; font-family: var(--mono); color: var(--teal-dark); margin-left: 12px; }
+
+/* hidden attribute must win over component display rules */
+[hidden] { display: none !important; }
+/* Bound the side column so the time course sits directly below the diagram */
+.tabgroup[data-group="side"] .tabpanel { max-height: 564px; overflow-y: auto; }
+.controls { min-height: 0; }

@@ -87,16 +87,38 @@
     ctx.fillText("concentration (" + (opts.yUnit || "") + ")", 0, 0);
     ctx.restore();
 
-    ctx.lineWidth = 1.75;
+    // Progressive draw: if a cursor time is given, draw each trace only up to it.
+    const cur = (opts.cursorT != null && isFinite(opts.cursorT)) ? Math.max(0, Math.min(tMax, opts.cursorT)) : tMax;
+    ctx.lineWidth = 1.5;
     for (const s of series) {
       ctx.strokeStyle = s.color;
       ctx.beginPath();
+      let started = false, lastY = 0;
       for (let i = 0; i < sol.t.length; i++) {
-        const x = xToPx(sol.t[i]);
-        const y = yToPx(sol.y[i][s.index]);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        const t = sol.t[i];
+        if (t > cur) {
+          // interpolate the leading point exactly at the cursor, then stop
+          if (i > 0) {
+            const t0 = sol.t[i - 1], f = (t - t0) > 0 ? (cur - t0) / (t - t0) : 0;
+            const v = sol.y[i - 1][s.index] + (sol.y[i][s.index] - sol.y[i - 1][s.index]) * f;
+            lastY = yToPx(v);
+            ctx.lineTo(xToPx(cur), lastY);
+          }
+          break;
+        }
+        const x = xToPx(t), y = yToPx(sol.y[i][s.index]);
+        lastY = y;
+        if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
       }
       ctx.stroke();
+    }
+
+    // Time cursor line (teal = live state).
+    if (opts.cursorT != null && isFinite(opts.cursorT)) {
+      const cx = xToPx(cur);
+      ctx.strokeStyle = "#0891b2";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, mT); ctx.lineTo(cx, mT + ph); ctx.stroke();
     }
 
     drawLegend(ctx, series, mL + 10, mT + 8);

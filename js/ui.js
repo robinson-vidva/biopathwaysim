@@ -261,7 +261,8 @@
     const odes = el("div", "eq-block");
     odes.appendChild(el("h3", null, "System of ODEs"));
     for (const s of model.species) {
-      const line = el("div", "eq-line", odeLine(s, model));
+      const line = el("div", "eq-line",
+        odeLine(s, model) + ' <span class="eq-cursor" data-cval="' + s.id + '"></span>');
       line.setAttribute("data-species", s.id);
       odes.appendChild(line);
     }
@@ -272,7 +273,8 @@
     for (const r of model.reactions) {
       let rhs;
       try { rhs = renderRateLaw(r, params); } catch (e) { rhs = '<span class="eq-mod">(incomplete)</span>'; }
-      const line = el("div", "eq-line", '<span class="eq-rxn">' + r.id + "</span> = " + rhs);
+      const line = el("div", "eq-line", '<span class="eq-rxn">' + r.id + "</span> = " + rhs +
+        ' <span class="eq-cursor" data-rval="' + r.id + '"></span>');
       line.setAttribute("data-reaction", r.id);
       laws.appendChild(line);
     }
@@ -367,9 +369,29 @@
     container.appendChild(field("Spacing", spacingSel));
   }
 
+  // Fill the live cursor readouts: each species' concentration and each
+  // reaction's flux at the current cursor time.
+  function updateEquationValues(container, model, sys, y, params) {
+    const cU = model.units ? model.units.concentration : "";
+    const tU = model.units ? model.units.time : "s";
+    container.querySelectorAll("[data-cval]").forEach((el2) => {
+      const id = el2.getAttribute("data-cval");
+      const v = y ? y[sys.idx[id]] : undefined;
+      el2.textContent = v == null ? "" : fmt(v) + (cU ? " " + cU : "");
+    });
+    container.querySelectorAll("[data-rval]").forEach((el2) => {
+      const id = el2.getAttribute("data-rval");
+      const r = model.reactions.find((x) => x.id === id);
+      let rate;
+      try { rate = r && y ? NS.reactionRate(r, y, sys.idx, params) : undefined; } catch (e) { rate = undefined; }
+      el2.textContent = rate == null ? "" : fmt(rate) + (cU ? " " + cU + "/" + tU : "");
+    });
+  }
+
   NS.speciesColor = speciesColor;
   NS.buildControls = buildControls;
   NS.renderCitation = renderCitation;
   NS.renderEquations = renderEquations;
   NS.buildSweepControls = buildSweepControls;
+  NS.updateEquationValues = updateEquationValues;
 })(typeof globalThis !== "undefined" ? globalThis : this);
