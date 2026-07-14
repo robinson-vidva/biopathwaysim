@@ -55,7 +55,7 @@
   let editMode = false, dragMode = "move", connectSource = null, selectedNodeId = null;
 
   // Shared time cursor (fraction 0..1 of the stored trajectory).
-  let cursorFrac = 0, playing = true, speed = 1, stride = 1, dirty = true, lastWall = null;
+  let cursorFrac = 1, playing = false, speed = 1, stride = 1, dirty = true, lastWall = null, rafId = null;
   const BASE_MS = 12000;                 // wall time for the full trajectory at 1x
   let plotsTab = "timecourse", sideTab = "controls";
   let hovered = null;
@@ -91,7 +91,7 @@
 
   function onTabShown(name) {
     if (name === "dose") drawDose();
-    dirty = true;   // let the cursor loop repaint the newly shown time course / equations
+    requestRender();   // repaint the newly shown time course / equations at the cursor
   }
 
   function initTabs() {
@@ -138,11 +138,11 @@
     if (diagram) norms = diagram.computeNorms(model, sys, lastSol, params);
     NS.renderEquations(equationsEl, model, params);
     runNoteEl.textContent = lastSol.t.length + " steps, " + ms.toFixed(0) + " ms" + (ms > 200 ? " (slow)" : "");
-    dirty = true;   // the cursor loop redraws diagram + progressive time course
+    requestRender();   // the cursor loop redraws diagram + time course once
   }
 
   function scheduleRun() { clearTimeout(runTimer); runTimer = setTimeout(integrateAndDraw, 50); }
-  function scheduleDraw() { clearTimeout(drawTimer); drawTimer = setTimeout(() => { dirty = true; }, 50); }
+  function scheduleDraw() { clearTimeout(drawTimer); drawTimer = setTimeout(requestRender, 50); }
 
   // --- diagram + playback --------------------------------------------------
 
@@ -198,34 +198,35 @@
     updateTip(y);
   }
 
-  function playbackTick(nowMs) {
-    requestAnimationFrame(playbackTick);
+  // The animation loop runs only while playing or when there is one pending
+  // render; when paused and idle it stops, so it does not spin in the background.
+  function kick() { if (rafId == null) rafId = requestAnimationFrame(tick); }
+  function tick(nowMs) {
+    rafId = null;
     const dt = lastWall == null ? 0 : nowMs - lastWall;
     lastWall = nowMs;
-    if (!lastSol || !sys) return;
-    if (playing) {
+    if (playing && lastSol && sys) {
       cursorFrac += (speed * dt) / BASE_MS;
-      cursorFrac -= Math.floor(cursorFrac);   // wrap into [0,1)
+      if (cursorFrac >= 1) { cursorFrac = 1; setPlaying(false); }   // play once, stop at the end
       dirty = true;
     }
-    if (!dirty) return;
-    dirty = false;
-    renderCursor();
+    if (dirty) { dirty = false; renderCursor(); }
+    if (playing) kick();
   }
+  function requestRender() { dirty = true; kick(); }
 
   function setPlaying(p) {
     playing = p;
     tpPlay.textContent = playing ? "Pause" : "Play";
     tpPlay.classList.toggle("playing", playing);
-    dirty = true;
+    if (playing) lastWall = null;   // reset dt so resuming does not jump
+    requestRender();
   }
   function stepCursor(dir) {
+    cursorFrac = Math.max(0, Math.min(1, cursorFrac + dir * (stride / tEndOf())));
     setPlaying(false);
-    const frac = stride / tEndOf();
-    cursorFrac = Math.max(0, Math.min(1, cursorFrac + dir * frac));
-    dirty = true;
   }
-  function resetCursor() { cursorFrac = 0; dirty = true; }
+  function resetCursor() { cursorFrac = 0; setPlaying(false); }
 
   function updateTip(y) {
     if (!hovered || !sys || !y) { cyTip.hidden = true; return; }
@@ -399,7 +400,8 @@
     model = clone(currentSpec);
     initSweepCfg();
     lastDose = null;
-    cursorFrac = 0;
+    cursorFrac = 1;             // show the complete trajectory, paused
+    setPlaying(false);
     stride = tEndOf() / 200;
     tpStride.value = Math.round(stride * 1000) / 1000;
     tpStrideUnit.textContent = model.units ? model.units.time : "s";
@@ -613,10 +615,10 @@
       });
       // Hover readouts at the current cursor time.
       const cy = diagram.cy;
-      cy.on("mouseover", "node", (evt) => { hovered = { type: "node", id: evt.target.id(), kind: evt.target.data("kind"), pos: evt.renderedPosition }; dirty = true; });
-      cy.on("mouseover", "edge", (evt) => { hovered = { type: "edge", rxn: evt.target.data("rxn"), pos: evt.renderedPosition }; dirty = true; });
-      cy.on("mousemove", "node", (evt) => { if (hovered) { hovered.pos = evt.renderedPosition; dirty = true; } });
-      cy.on("mousemove", "edge", (evt) => { if (hovered) { hovered.pos = evt.renderedPosition; dirty = true; } });
+      cy.on("mouseover", "node", (evt) => { hovered = { type: "node", id: evt.target.id(), kind: evt.target.data("kind"), pos: evt.renderedPosition }; requestRender(); });
+      cy.on("mouseover", "edge", (evt) => { hovered = { type: "edge", rxn: evt.target.data("rxn"), pos: evt.renderedPosition }; requestRender(); });
+      cy.on("mousemove", "node", (evt) => { if (hovered) { hovered.pos = evt.renderedPosition; requestRender(); } });
+      cy.on("mousemove", "edge", (evt) => { if (hovered) { hovered.pos = evt.renderedPosition; requestRender(); } });
       cy.on("mouseout", "node", () => { hovered = null; cyTip.hidden = true; });
       cy.on("mouseout", "edge", () => { hovered = null; cyTip.hidden = true; });
     }
@@ -634,8 +636,6 @@
     picker.addEventListener("change", () => { currentSpec = specs[Number(picker.value)]; activate(); });
     currentSpec = specs[0];
     activate();
-    setPlaying(true);
-    requestAnimationFrame(playbackTick);
   }
 
   btnNew.addEventListener("click", () => {
@@ -663,12 +663,15 @@
   btnExportCsv.addEventListener("click", exportCsv);
   sweepRunBtn.addEventListener("click", runSweep);
 
-  tpPlay.addEventListener("click", () => setPlaying(!playing));
+  tpPlay.addEventListener("click", () => {
+    if (!playing && cursorFrac >= 1) cursorFrac = 0;   // at the end: replay from the start
+    setPlaying(!playing);
+  });
   tpStep.addEventListener("click", () => stepCursor(1));
   tpReset.addEventListener("click", resetCursor);
   tpSpeed.addEventListener("change", () => { speed = Number(tpSpeed.value) || 1; });
   tpStride.addEventListener("input", () => { const v = Number(tpStride.value); stride = v > 0 ? v : stride; });
-  tpTime.addEventListener("input", () => { setPlaying(false); cursorFrac = Number(tpTime.value) / 1000; dirty = true; });
+  tpTime.addEventListener("input", () => { cursorFrac = Number(tpTime.value) / 1000; setPlaying(false); });
   cyFit.addEventListener("click", () => { if (diagram) diagram.fit(); });
   cyRelayout.addEventListener("click", () => { if (diagram) { diagram.relayout(); } });
 
