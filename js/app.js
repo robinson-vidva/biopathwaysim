@@ -78,10 +78,18 @@
   function sweepValues(param, n, spacing) {
     const lo = param.min, hi = param.max;
     const out = [];
-    const useLog = spacing === "log" && lo > 0 && hi > 0;
-    for (let i = 0; i < n; i++) {
-      const f = n === 1 ? 0 : i / (n - 1);
-      out.push(useLog ? lo * Math.pow(hi / lo, f) : lo + (hi - lo) * f);
+    if (spacing === "log" && hi > 0) {
+      if (lo > 0) {
+        for (let i = 0; i < n; i++) out.push(lo * Math.pow(hi / lo, i / (n - 1)));
+      } else {
+        // Include an explicit zero, then log-space from a small floor to max.
+        out.push(0);
+        const floor = hi / 1000;
+        const m = n - 1;
+        for (let i = 0; i < m; i++) out.push(m <= 1 ? hi : floor * Math.pow(hi / floor, i / (m - 1)));
+      }
+    } else {
+      for (let i = 0; i < n; i++) out.push(n === 1 ? lo : lo + (hi - lo) * (i / (n - 1)));
     }
     return out;
   }
@@ -134,14 +142,17 @@
     NS.renderCitation(citationEl, model);
     NS.buildControls(controlsEl, model, ctx);
 
-    const doseParam = model.parameters.find((p) => p.role === "dose") || model.parameters[0];
+    const doseParam = model.parameters.find((p) => p.role === "dose");
+    const sweepParam = doseParam || model.parameters[0];
     const plotted = model.species.find((s) => s.plot) || model.species[0];
     sweepCfg = {
-      paramId: doseParam.id,
+      paramId: sweepParam.id,
       speciesId: plotted.id,
       readout: "mean",
-      nPoints: 25,
-      spacing: doseParam.scale || "linear",
+      // A dose spans zero to saturation, so log spacing (with an explicit zero)
+      // and more points render low-dose structure that linear spacing hides.
+      nPoints: doseParam ? 40 : 25,
+      spacing: doseParam ? "log" : (sweepParam.scale || "linear"),
     };
     NS.buildSweepControls(sweepControlsEl, model, sweepCfg);
 

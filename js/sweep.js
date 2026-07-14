@@ -38,6 +38,32 @@
     return { min: lo, max: hi };
   }
 
+  // Mean over whole oscillation cycles (peak to peak), so the value does not
+  // depend on where the averaging window happens to be truncated.
+  function cycleMean(sol, si, tStart) {
+    const T = [], Y = [];
+    for (let i = 0; i < sol.t.length; i++) {
+      if (sol.t[i] >= tStart) { T.push(sol.t[i]); Y.push(sol.y[i][si]); }
+    }
+    if (T.length < 5) return tailMean(sol, si, tStart);
+    let lo = Infinity, hi = -Infinity;
+    for (const v of Y) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    const mid = (lo + hi) / 2, band = 0.05 * (hi - lo);
+    const peaks = [];
+    for (let i = 1; i < Y.length - 1; i++) {
+      if (Y[i] > Y[i - 1] && Y[i] >= Y[i + 1] && Y[i] > mid + band) peaks.push(i);
+    }
+    if (peaks.length < 2) return tailMean(sol, si, tStart);
+    const a = peaks[0], b = peaks[peaks.length - 1];
+    let area = 0, span = 0;
+    for (let i = a + 1; i <= b; i++) {
+      const dt = T[i] - T[i - 1];
+      area += 0.5 * (Y[i] + Y[i - 1]) * dt;
+      span += dt;
+    }
+    return span > 0 ? area / span : tailMean(sol, si, tStart);
+  }
+
   function sweep(model, paramId, values, options) {
     options = options || {};
     const sys = NS.buildModel(model);
@@ -49,7 +75,7 @@
     const atol = sim.atol || 1e-9;
     const hmax = baseT / 300;
     const maxT = options.maxTime || baseT * 2;      // hard cap on integration time
-    const tailFrac = options.tailFraction || 0.4;
+    const tailFrac = options.tailFraction || 0.5;
     const settleTol = options.settleTol || 1e-3;    // relative tail amplitude
     const base = Object.assign({}, sys.defaultParams, options.params || {});
 
@@ -71,7 +97,7 @@
       }
 
       const last = sol.y[sol.y.length - 1][si];
-      const mean = tailMean(sol, si, tStart);
+      const mean = settled ? tailMean(sol, si, tStart) : cycleMean(sol, si, tStart);
       return {
         x: v,
         oscillatory: !settled,

@@ -144,22 +144,36 @@
     const ph = cssH - mT - mB;
     if (!data.length) return;
 
-    const xLog = !!opts.xLog && data.every((p) => p.x > 0);
-    const tx = (x) => (xLog ? Math.log10(x) : x);
-    let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
-    for (const p of data) {
-      const X = tx(p.x);
-      if (X < xmin) xmin = X;
-      if (X > xmax) xmax = X;
-      if (p.y < ymin) ymin = p.y;
-      if (p.y > ymax) ymax = p.y;
-    }
-    if (xmax === xmin) xmax = xmin + 1;
+    const pos = data.filter((p) => p.x > 0);
+    const hasZero = data.some((p) => p.x === 0);
+    // Log x only makes sense with at least two positive values.
+    const xLog = !!opts.xLog && pos.length >= 2;
+
+    let ymin = Infinity, ymax = -Infinity;
+    for (const p of data) { if (p.y < ymin) ymin = p.y; if (p.y > ymax) ymax = p.y; }
     const yPad = (ymax - ymin) * 0.08 || Math.abs(ymax) * 0.08 || 1;
     ymin -= yPad; ymax += yPad;
-
-    const xToPx = (x) => mL + ((tx(x) - xmin) / (xmax - xmin)) * pw;
     const yToPx = (y) => mT + ph - ((y - ymin) / (ymax - ymin)) * ph;
+
+    let xToPx, xLo = 0, xHi = 1;
+    let zeroPx = null, logStart = mL, logW = pw;
+    if (xLog) {
+      // Reserve a small left strip for an explicit zero point, with a break.
+      const zeroW = hasZero ? pw * 0.09 : 0;
+      logStart = mL + zeroW;
+      logW = pw - zeroW;
+      xLo = Math.log10(pos[0].x);
+      xHi = Math.log10(pos[pos.length - 1].x);
+      if (xHi === xLo) xHi = xLo + 1;
+      if (hasZero) zeroPx = mL + zeroW * 0.45;
+      xToPx = (x) => (x === 0 ? zeroPx : logStart + ((Math.log10(x) - xLo) / (xHi - xLo)) * logW);
+    } else {
+      xLo = data[0].x;
+      xHi = data[data.length - 1].x;
+      for (const p of data) { if (p.x < xLo) xLo = p.x; if (p.x > xHi) xHi = p.x; }
+      if (xHi === xLo) xHi = xLo + 1;
+      xToPx = (x) => mL + ((x - xLo) / (xHi - xLo)) * pw;
+    }
 
     ctx.font = "12px 'JetBrains Mono', monospace";
     ctx.textBaseline = "middle";
@@ -176,19 +190,42 @@
     }
 
     ctx.textAlign = "center";
-    const xticks = xLog ? logTicks(xmin, xmax) : niceTicks(xmin, xmax, 6);
-    for (const t of xticks) {
-      const xv = xLog ? Math.pow(10, t) : t;
-      const x = xToPx(xv);
-      if (x < mL - 1 || x > mL + pw + 1) continue;
-      ctx.beginPath(); ctx.moveTo(x, mT); ctx.lineTo(x, mT + ph); ctx.stroke();
-      ctx.fillText(fmtTick(xv), x, mT + ph + 16);
+    if (xLog) {
+      if (hasZero) {
+        ctx.beginPath(); ctx.moveTo(zeroPx, mT); ctx.lineTo(zeroPx, mT + ph); ctx.stroke();
+        ctx.fillText("0", zeroPx, mT + ph + 16);
+      }
+      for (let p = Math.ceil(xLo); p <= Math.floor(xHi); p++) {
+        const xv = Math.pow(10, p);
+        const x = xToPx(xv);
+        ctx.beginPath(); ctx.moveTo(x, mT); ctx.lineTo(x, mT + ph); ctx.stroke();
+        ctx.fillText(fmtTick(xv), x, mT + ph + 16);
+      }
+    } else {
+      for (const v of niceTicks(xLo, xHi, 6)) {
+        const x = xToPx(v);
+        if (x < mL - 1 || x > mL + pw + 1) continue;
+        ctx.beginPath(); ctx.moveTo(x, mT); ctx.lineTo(x, mT + ph); ctx.stroke();
+        ctx.fillText(fmtTick(v), x, mT + ph + 16);
+      }
     }
 
     ctx.strokeStyle = "#94a3b8";
     ctx.beginPath();
     ctx.moveTo(mL, mT); ctx.lineTo(mL, mT + ph); ctx.lineTo(mL + pw, mT + ph);
     ctx.stroke();
+
+    // Axis-break glyph between the zero point and the log region.
+    if (xLog && zeroPx !== null) {
+      const bx = (zeroPx + logStart) / 2, by = mT + ph;
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 1;
+      for (const off of [-2, 2]) {
+        ctx.beginPath();
+        ctx.moveTo(bx + off - 2, by + 4); ctx.lineTo(bx + off + 2, by - 4);
+        ctx.stroke();
+      }
+    }
 
     ctx.fillStyle = "#475569";
     ctx.font = "12px 'DM Sans', sans-serif";
@@ -225,12 +262,6 @@
         ctx.fill();
       }
     }
-  }
-
-  function logTicks(lo, hi) {
-    const ticks = [];
-    for (let p = Math.floor(lo); p <= Math.ceil(hi); p++) ticks.push(p);
-    return ticks;
   }
 
   NS.drawPlot = drawPlot;

@@ -329,7 +329,7 @@
     const paramSel = makeSelect(paramOpts, cfg.paramId, (v) => {
       cfg.paramId = v;
       const p = model.parameters.find((x) => x.id === v);
-      cfg.spacing = p.scale || "linear";
+      cfg.spacing = p.role === "dose" ? "log" : (p.scale || "linear");
       if (spacingSel) spacingSel.value = cfg.spacing;
     });
     container.appendChild(field("Sweep parameter", paramSel));
