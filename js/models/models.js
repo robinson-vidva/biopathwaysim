@@ -18,7 +18,7 @@
   "species": [
     {
       "id": "MKKK",
-      "name": "MAPKKK",
+      "name": "RAF1",
       "initial": 90,
       "plot": false,
       "gene": "RAF1",
@@ -26,7 +26,7 @@
     },
     {
       "id": "MKKKp",
-      "name": "MAPKKK-P",
+      "name": "RAF1-P",
       "initial": 10,
       "plot": false,
       "gene": "RAF1",
@@ -34,7 +34,7 @@
     },
     {
       "id": "MKK",
-      "name": "MAPKK",
+      "name": "MAP2K1",
       "initial": 280,
       "plot": false,
       "gene": "MAP2K1",
@@ -42,7 +42,7 @@
     },
     {
       "id": "MKKp",
-      "name": "MAPKK-P",
+      "name": "MAP2K1-P",
       "initial": 10,
       "plot": false,
       "gene": "MAP2K1",
@@ -50,7 +50,7 @@
     },
     {
       "id": "MKKpp",
-      "name": "MAPKK-PP",
+      "name": "MAP2K1-PP",
       "initial": 10,
       "plot": false,
       "gene": "MAP2K1",
@@ -58,7 +58,7 @@
     },
     {
       "id": "MAPK",
-      "name": "MAPK",
+      "name": "MAPK1",
       "initial": 280,
       "plot": false,
       "gene": "MAPK1",
@@ -66,7 +66,7 @@
     },
     {
       "id": "MAPKp",
-      "name": "MAPK-P",
+      "name": "MAPK1-P",
       "initial": 10,
       "plot": false,
       "gene": "MAPK1",
@@ -74,7 +74,7 @@
     },
     {
       "id": "MAPKpp",
-      "name": "MAPK-PP (active ERK)",
+      "name": "MAPK1-PP (active ERK)",
       "initial": 10,
       "plot": true,
       "gene": "MAPK1",
