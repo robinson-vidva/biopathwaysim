@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0",
+  "id": "mapk",
+  "name": "MAPK/ERK cascade with negative feedback",
+  "citation": {
+    "text": "Kholodenko BN. Negative feedback and ultrasensitivity can bring about oscillations in the mitogen-activated protein kinase cascades. Eur J Biochem 2000;267:1583-1588.",
+    "doi": "10.1046/j.1432-1327.2000.01197.x"
+  },
+  "units": { "concentration": "nM", "time": "s" },
+  "species": [
+    { "id": "MKKK",    "name": "MAPKKK",           "initial": 90,  "plot": false },
+    { "id": "MKKKp",   "name": "MAPKKK-P",         "initial": 10,  "plot": false },
+    { "id": "MKK",     "name": "MAPKK",            "initial": 280, "plot": false },
+    { "id": "MKKp",    "name": "MAPKK-P",          "initial": 10,  "plot": false },
+    { "id": "MKKpp",   "name": "MAPKK-PP",         "initial": 10,  "plot": false },
+    { "id": "MAPK",    "name": "MAPK",             "initial": 280, "plot": false },
+    { "id": "MAPKp",   "name": "MAPK-P",           "initial": 10,  "plot": false },
+    { "id": "MAPKpp",  "name": "MAPK-PP (active ERK)", "initial": 10, "plot": true }
+  ],
+  "parameters": [
+    { "id": "stimulus", "name": "Stimulus (V1)",     "value": 2.5,   "min": 0.0,  "max": 5.0,  "scale": "linear", "unit": "nM/s" },
+    { "id": "fbKi",     "name": "Feedback Ki",       "value": 9.0,   "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
+    { "id": "fbN",      "name": "Cooperativity n",   "value": 1.0,   "min": 1.0,  "max": 4.0,  "scale": "linear", "unit": "" },
+    { "id": "K1",       "name": "K1",                "value": 10.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
+    { "id": "V2",       "name": "V2",                "value": 0.25,  "min": 0.01, "max": 2.0,  "scale": "log",    "unit": "nM/s" },
+    { "id": "K2",       "name": "K2",                "value": 8.0,   "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
+    { "id": "k3",       "name": "k3",                "value": 0.025, "min": 0.001,"max": 0.5,  "scale": "log",    "unit": "1/s" },
+    { "id": "K3",       "name": "K3",                "value": 15.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
+    { "id": "k4",       "name": "k4",                "value": 0.025, "min": 0.001,"max": 0.5,  "scale": "log",    "unit": "1/s" },
+    { "id": "K4",       "name": "K4",                "value": 15.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
+    { "id": "V5",       "name": "V5",                "value": 0.75,  "min": 0.01, "max": 5.0,  "scale": "log",    "unit": "nM/s" },
+    { "id": "K5",       "name": "K5",                "value": 15.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
+    { "id": "V6",       "name": "V6",                "value": 0.75,  "min": 0.01, "max": 5.0,  "scale": "log",    "unit": "nM/s" },
+    { "id": "K6",       "name": "K6",                "value": 15.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
+    { "id": "k7",       "name": "k7",                "value": 0.025, "min": 0.001,"max": 0.5,  "scale": "log",    "unit": "1/s" },
+    { "id": "K7",       "name": "K7",                "value": 15.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
+    { "id": "k8",       "name": "k8",                "value": 0.025, "min": 0.001,"max": 0.5,  "scale": "log",    "unit": "1/s" },
+    { "id": "K8",       "name": "K8",                "value": 15.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
+    { "id": "V9",       "name": "V9",                "value": 0.5,   "min": 0.01, "max": 5.0,  "scale": "log",    "unit": "nM/s" },
+    { "id": "K9",       "name": "K9",                "value": 15.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" },
+    { "id": "V10",      "name": "V10",               "value": 0.5,   "min": 0.01, "max": 5.0,  "scale": "log",    "unit": "nM/s" },
+    { "id": "K10",      "name": "K10",               "value": 15.0,  "min": 1.0,  "max": 100,  "scale": "log",    "unit": "nM" }
+  ],
+  "reactions": [
+    { "id": "v1",  "name": "MKKK activation (feedback)", "reactants": { "MKKK": 1 },  "products": { "MKKKp": 1 },
+      "rateLaw": { "type": "michaelis_menten", "Vmax": "stimulus", "Km": "K1", "feedback": { "species": "MAPKpp", "Ki": "fbKi", "n": "fbN" } } },
+    { "id": "v2",  "name": "MKKK-P deactivation", "reactants": { "MKKKp": 1 }, "products": { "MKKK": 1 },
+      "rateLaw": { "type": "michaelis_menten", "Vmax": "V2", "Km": "K2" } },
+    { "id": "v3",  "name": "MKK phosphorylation", "reactants": { "MKK": 1 }, "products": { "MKKp": 1 },
+      "rateLaw": { "type": "michaelis_menten", "kcat": "k3", "Km": "K3", "enzyme": "MKKKp" } },
+    { "id": "v4",  "name": "MKK-P phosphorylation", "reactants": { "MKKp": 1 }, "products": { "MKKpp": 1 },
+      "rateLaw": { "type": "michaelis_menten", "kcat": "k4", "Km": "K4", "enzyme": "MKKKp" } },
+    { "id": "v5",  "name": "MKK-PP dephosphorylation", "reactants": { "MKKpp": 1 }, "products": { "MKKp": 1 },
+      "rateLaw": { "type": "michaelis_menten", "Vmax": "V5", "Km": "K5" } },
+    { "id": "v6",  "name": "MKK-P dephosphorylation", "reactants": { "MKKp": 1 }, "products": { "MKK": 1 },
+      "rateLaw": { "type": "michaelis_menten", "Vmax": "V6", "Km": "K6" } },
+    { "id": "v7",  "name": "MAPK phosphorylation", "reactants": { "MAPK": 1 }, "products": { "MAPKp": 1 },
+      "rateLaw": { "type": "michaelis_menten", "kcat": "k7", "Km": "K7", "enzyme": "MKKpp" } },
+    { "id": "v8",  "name": "MAPK-P phosphorylation", "reactants": { "MAPKp": 1 }, "products": { "MAPKpp": 1 },
+      "rateLaw": { "type": "michaelis_menten", "kcat": "k8", "Km": "K8", "enzyme": "MKKpp" } },
+    { "id": "v9",  "name": "MAPK-PP dephosphorylation", "reactants": { "MAPKpp": 1 }, "products": { "MAPKp": 1 },
+      "rateLaw": { "type": "michaelis_menten", "Vmax": "V9", "Km": "K9" } },
+    { "id": "v10", "name": "MAPK-P dephosphorylation", "reactants": { "MAPKp": 1 }, "products": { "MAPK": 1 },
+      "rateLaw": { "type": "michaelis_menten", "Vmax": "V10", "Km": "K10" } }
+  ],
+  "inhibitors": [
+    { "id": "mekInh", "name": "MEK inhibitor", "target": "v4", "mechanism": "noncompetitive",
+      "Ki": 15.0, "dose": 0.0, "doseMax": 300.0 }
+  ],
+  "simulation": { "tEnd": 9000, "rtol": 1e-6, "atol": 1e-9 }
+}
