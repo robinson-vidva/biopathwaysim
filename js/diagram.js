@@ -7,11 +7,11 @@
 
   const STYLE = [
     { selector: 'node[kind="species"]', style: {
-        "shape": "ellipse", "label": "data(label)", "width": 40, "height": 40,
+        "shape": "ellipse", "label": "data(label)", "width": 46, "height": 46,
         "background-color": "#0891b2", "background-opacity": "mapData(level, 0, 1, 0.12, 1)",
         "border-width": 1.5, "border-color": "#0e7490",
         "font-family": "JetBrains Mono, monospace", "font-size": 10, "color": "#0f172a",
-        "text-valign": "center", "text-halign": "center", "text-max-width": 46, "text-wrap": "wrap" } },
+        "text-valign": "center", "text-halign": "center", "text-max-width": 64, "text-wrap": "wrap" } },
     { selector: 'node[kind="reaction"]', style: {
         "shape": "round-rectangle", "label": "data(label)", "width": 20, "height": 20,
         "background-color": "#475569", "border-width": 1, "border-color": "#1e293b",
@@ -49,7 +49,7 @@
     const drugs = new Set();
 
     for (const s of model.species)
-      nodes.push({ data: { id: "s:" + s.id, kind: "species", label: s.id, level: 0 } });
+      nodes.push({ data: { id: "s:" + s.id, kind: "species", label: s.name || s.id, level: 0 } });
     for (const r of model.reactions)
       nodes.push({ data: { id: "r:" + r.id, kind: "reaction", label: r.id, level: 0 } });
 
